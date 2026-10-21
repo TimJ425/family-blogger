@@ -1,0 +1,27 @@
+{# expects form (avatar, avatar_upload); optional show_current #}
+{% from 'macros.html' import file_button %}
+<fieldset>
+  <legend>Pick an avatar</legend>
+  <div class="avatar-grid" role="radiogroup">
+    {% if show_current %}
+    <div>
+      <input class="choice-input" type="radio" name="avatar" id="avatar-current" value="current" {{ 'checked' if form.avatar.data == 'current' }}>
+      <label class="avatar-option" for="avatar-current"><img src="{{ current_user.avatar_url }}" alt="Your current photo">Current</label>
+    </div>
+    {% endif %}
+    {% for a in avatars %}
+    <div>
+      <input class="choice-input" type="radio" name="avatar" id="avatar-{{ a }}" value="{{ a }}" {{ 'checked' if form.avatar.data == a }}>
+      <label class="avatar-option" for="avatar-{{ a }}"><img src="{{ url_for('static', filename='img/avatars/' ~ a ~ '.svg') }}" alt="">{{ a|capitalize }}</label>
+    </div>
+    {% endfor %}
+  </div>
+  {% if form.avatar.errors %}<ul class="errors">{% for e in form.avatar.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</fieldset>
+<div class="field">
+  <span class="label">Or upload your own photo</span>
+  {{ file_button('avatar_upload', 'avatar_upload', 'Choose a photo', preview='avatar-upload-preview') }}
+  <div id="avatar-upload-preview" class="preview-grid"></div>
+  <p class="hint">If you choose a photo, it is used instead of the avatar above.</p>
+  {% if form.avatar_upload.errors %}<ul class="errors">{% for e in form.avatar_upload.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div>

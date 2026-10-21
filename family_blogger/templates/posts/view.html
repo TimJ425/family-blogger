@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, avatar, mood_badge, visibility_badge %}
+{% block title %}{{ post.title }} - Family Blogger{% endblock %}
+{% block content %}
+<article class="card post-card">
+  <header class="post-meta">
+    <a href="{{ post.author.profile_url }}" aria-label="{{ post.author.name }}'s profile">{{ avatar(post.author, 'md') }}</a>
+    <div class="who">
+      <a href="{{ post.author.profile_url }}">{{ post.author.name }}</a>
+      <small class="muted"><time datetime="{{ post.created_at.isoformat() }}">{{ post.created_at|datetimeformat }}</time>{% if post.is_edited %} (edited){% endif %}</small>
+    </div>
+    <div class="badges">{{ mood_badge(post) }}{{ visibility_badge(post) }}</div>
+  </header>
+  <h1 class="post-title">{{ post.title }}</h1>
+  {% if post.body %}<div class="post-body">{{ post.body|markdown }}</div>{% endif %}
+  {% if post.photos %}
+  <div class="photo-grid full">
+    {% for photo in post.photos %}
+    <a href="{{ photo.url }}" target="_blank" rel="noopener"><img src="{{ photo.url }}" alt="Photo {{ loop.index }} of {{ post.photos|length }} from this post"></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="post-footer">{% include 'partials/reactions.html' %}</div>
+  {% if post.can_edit(current_user) or post.can_delete(current_user) %}
+  <div class="post-actions" style="margin-top:12px">
+    {% if post.can_edit(current_user) %}<a class="btn btn-secondary btn-small" href="{{ url_for('posts.edit_post', post_id=post.id) }}">{{ icon('edit') }} Edit</a>{% endif %}
+    {% if post.can_delete(current_user) %}{% include 'partials/delete_post_form.html' %}{% endif %}
+  </div>
+  {% endif %}
+</article>
+
+<section class="card" id="comments" aria-labelledby="comments-h">
+  <h2 id="comments-h">{{ icon('comment') }} Comments ({{ comments|length }})</h2>
+  {% for comment in comments %}
+  <div class="comment" id="comment-{{ comment.id }}">
+    <a href="{{ comment.author.profile_url }}" aria-label="{{ comment.author.name }}'s profile">{{ avatar(comment.author, 'sm') }}</a>
+    <div class="comment-main">
+      <div class="comment-head">
+        <a href="{{ comment.author.profile_url }}">{{ comment.author.name }}</a>
+        <small class="muted"><time datetime="{{ comment.created_at.isoformat() }}">{{ comment.created_at|datetimeformat }}</time></small>
+      </div>
+      <p class="comment-body">{{ comment.body }}</p>
+      {% if comment.can_delete(current_user) %}
+      <form method="post" action="{{ url_for('posts.delete_comment', comment_id=comment.id) }}" class="inline-form" onsubmit="return confirm('Delete this comment?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger btn-small">{{ icon('trash') }} Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">No comments yet. Say something nice!</p>
+  {% endfor %}
+
+  <form method="post" action="{{ url_for('posts.add_comment', post_id=post.id) }}" style="margin-top:1.2rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="comment-body">Add a comment</label>
+      <textarea id="comment-body" name="body" rows="3" maxlength="2000" required></textarea>
+    </div>
+    <button type="submit" class="btn">Post comment</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import field_errors %}
+{% block title %}Join - Family Blogger{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <img class="brand-big" src="{{ url_for('static', filename='img/logo/logo.svg') }}" alt="Family Blogger">
+  <h1>Join the family</h1>
+  <form method="post" action="{{ url_for('auth.signup') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="username">Choose a username</label>
+      <input type="text" id="username" name="username" value="{{ form.username.data or '' }}" autocomplete="username" autocapitalize="none" autofocus required>
+      <p class="hint">3 to 30 letters, numbers or underscores.</p>
+      {{ field_errors(form.username) }}
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required>
+      <p class="hint">At least 6 characters.</p>
+      {{ field_errors(form.password) }}
+    </div>
+    <div class="field">
+      <label for="confirm_password">Type the password again</label>
+      <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+      {{ field_errors(form.confirm_password) }}
+    </div>
+    <button type="submit" class="btn btn-big">Create my account</button>
+  </form>
+  <p style="margin-top:1rem">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
+{% endblock %}

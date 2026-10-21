@@ -1,0 +1,5 @@
+flake8>=7.0
+pep8-naming>=0.14
+flake8-docstrings>=1.7
+flake8-annotations>=3.1
+flake8-tidy-imports>=4.10

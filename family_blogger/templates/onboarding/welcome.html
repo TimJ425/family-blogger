@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import field_errors, file_button %}
+{% block title %}Welcome - Family Blogger{% endblock %}
+{% block container_class %}{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">Welcome to the family!</span></h1>
+<ol class="wizard-steps" aria-label="Steps">
+  <li>1. About you</li><li>2. Avatar</li><li>3. Theme</li><li>4. Finish</li>
+</ol>
+<form method="post" action="{{ url_for('onboarding.welcome') }}" enctype="multipart/form-data" id="wizard" class="card" data-wizard>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <section class="wizard-step" data-step="1" aria-labelledby="step1-h">
+    <h2 id="step1-h">1. Tell us about you</h2>
+    <div class="field">
+      <label for="display_name">Your name</label>
+      <input type="text" id="display_name" name="display_name" maxlength="60" value="{{ form.display_name.data or '' }}">
+      <p class="hint">This is the name your family will see.</p>
+      {{ field_errors(form.display_name) }}
+    </div>
+    <div class="field">
+      <label for="bio">A little about you (optional)</label>
+      <textarea id="bio" name="bio" maxlength="500" rows="4">{{ form.bio.data or '' }}</textarea>
+      {{ field_errors(form.bio) }}
+    </div>
+  </section>
+
+  <section class="wizard-step" data-step="2" aria-labelledby="step2-h">
+    <h2 id="step2-h">2. Pick your avatar</h2>
+    {% set show_current = false %}
+    {% include 'partials/avatar_picker.html' %}
+  </section>
+
+  <section class="wizard-step" data-step="3" aria-labelledby="step3-h">
+    <h2 id="step3-h">3. Make it yours</h2>
+    {% include 'partials/theme_picker.html' %}
+    <div class="field">
+      <span class="label">Background picture (optional)</span>
+      {{ file_button('background', 'background', 'Choose a picture', icon_name='image', preview='background-preview') }}
+      <div id="background-preview" class="preview-grid"></div>
+      {{ field_errors(form.background) }}
+    </div>
+  </section>
+
+  <section class="wizard-step" data-step="4" aria-labelledby="step4-h">
+    <h2 id="step4-h">4. All done!</h2>
+    <p>Everything looks great. You can change any of this later in Settings.</p>
+    <button type="submit" class="btn btn-big wizard-finish">Finish and start blogging</button>
+  </section>
+
+  <div class="wizard-nav">
+    <button type="button" class="btn btn-secondary" data-prev>Back</button>
+    <button type="button" class="btn" data-next>Next</button>
+  </div>
+  <div class="wizard-submit-nojs"></div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>{% endblock %}

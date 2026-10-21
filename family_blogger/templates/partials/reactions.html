@@ -1,0 +1,9 @@
+<div class="reactions" role="group" aria-label="Reactions">
+  {% for r in post.reaction_summary(current_user) %}
+  <form method="post" action="{{ url_for('posts.react', post_id=post.id, kind=r.kind) }}" class="reaction-form" data-kind="{{ r.kind }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+    <button type="submit" class="reaction {{ 'is-active' if r.reacted }}" aria-pressed="{{ 'true' if r.reacted else 'false' }}" title="{{ r.label }}" aria-label="{{ r.label }}"><span aria-hidden="true">{{ r.emoji }}</span> <span class="count">{{ r.count }}</span></button>
+  </form>
+  {% endfor %}
+</div>

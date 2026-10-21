@@ -1,0 +1,12 @@
+{% if pagination and pagination.pages > 1 %}
+{% set args = dict(request.view_args or {}, **(page_args if page_args is defined and page_args else {})) %}
+<nav class="pagination" aria-label="Pages">
+  {% if pagination.has_prev %}<a href="{{ url_for(request.endpoint, page=pagination.prev_num, **args) }}" rel="prev">&laquo; Newer</a>{% endif %}
+  {% for n in pagination.iter_pages() %}
+    {% if n is none %}<span class="page gap">&hellip;</span>
+    {% elif n == pagination.page %}<span class="page current" aria-current="page">{{ n }}</span>
+    {% else %}<a href="{{ url_for(request.endpoint, page=n, **args) }}">{{ n }}</a>{% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}<a href="{{ url_for(request.endpoint, page=pagination.next_num, **args) }}" rel="next">Older &raquo;</a>{% endif %}
+</nav>
+{% endif %}

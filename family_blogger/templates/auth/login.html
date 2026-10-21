@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import field_errors %}
+{% block title %}Log in - Family Blogger{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <img class="brand-big" src="{{ url_for('static', filename='img/logo/logo.svg') }}" alt="Family Blogger">
+  <h1>Welcome back!</h1>
+  <form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="{{ form.username.data or '' }}" autocomplete="username" autocapitalize="none" autofocus required>
+      {{ field_errors(form.username) }}
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+      {{ field_errors(form.password) }}
+    </div>
+    <div class="check field">
+      <input type="checkbox" id="remember" name="remember" value="y" {{ 'checked' if form.remember.data }}>
+      <label for="remember">Keep me logged in</label>
+    </div>
+    <button type="submit" class="btn btn-big">Log in</button>
+  </form>
+  <p class="hint" style="margin-top:1rem">Forgot your password? Ask a family admin to reset it.</p>
+  <p>New here? <a href="{{ url_for('auth.signup') }}">Create an account</a></p>
+</div>
+{% endblock %}

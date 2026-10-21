@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, avatar %}
+{% block title %}Family - Family Blogger{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('users') }} Our family</span></h1>
+<div class="member-grid">
+  {% for m in members %}
+  <article class="card member-card">
+    <a href="{{ m.user.profile_url }}" aria-label="{{ m.user.name }}'s profile">{{ avatar(m.user, 'lg') }}</a>
+    <h2><a href="{{ m.user.profile_url }}">{{ m.user.name }}</a></h2>
+    <p class="muted small" style="margin:0">@{{ m.user.username }}</p>
+    {% if m.user.is_admin %}<span class="badge badge-admin">{{ icon('shield') }} Admin</span>{% endif %}
+    {% if m.user.bio %}<p class="small">{{ m.user.bio|truncate(120) }}</p>{% endif %}
+    <p class="small muted">{{ m.post_count }} post{{ '' if m.post_count == 1 else 's' }}</p>
+    <a class="btn btn-secondary btn-small" href="{{ m.user.profile_url }}">Visit profile</a>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

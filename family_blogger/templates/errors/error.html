@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - Family Blogger{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="card error-page">
+  <img src="{{ url_for('static', filename='img/moods/sad.svg') }}" alt="">
+  <div class="code">{{ code }}</div>
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <a class="btn btn-big" href="{{ url_for('posts.feed') }}">Take me home</a>
+</div>
+{% endblock %}

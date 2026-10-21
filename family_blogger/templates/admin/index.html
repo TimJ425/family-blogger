@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, avatar %}
+{% block title %}Admin - Family Blogger{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('shield') }} Family admin</span></h1>
+<div class="stats">
+  {% for label, key in [('People','users'),('Admins','admins'),('Posts','posts'),('Comments','comments'),('Photos','photos')] %}
+  <div class="card stat"><strong>{{ stats[key] }}</strong>{{ label }}</div>
+  {% endfor %}
+</div>
+<section class="card">
+  <h2>People</h2>
+  <div class="table-wrap">
+  <table class="admin">
+    <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col">Posts</th><th scope="col">Reset password</th><th scope="col">Actions</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+    <tr>
+      <td class="cell-person"><div class="admin-user">{{ avatar(row.user, 'sm') }}<div><a href="{{ row.user.profile_url }}"><strong>{{ row.user.name }}</strong></a>
+        {% if row.is_self %} <span class="badge">You</span>{% endif %}
+        <div class="muted small">@{{ row.user.username }}</div></div></div></td>
+      <td data-label="Role">{% if row.user.is_admin %}<span class="badge badge-admin">Admin</span>{% else %}<span class="badge">Member</span>{% endif %}</td>
+      <td data-label="Joined">{{ row.user.created_at|dateformat('%d %b %Y') }}</td>
+      <td data-label="Posts">{{ row.post_count }}</td>
+      <td class="cell-reset" data-label="Reset password">
+        <form method="post" action="{{ url_for('admin.reset_password', user_id=row.user.id) }}" class="reset-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="visually-hidden" for="np-{{ row.user.id }}">New password for {{ row.user.name }}</label>
+          <input type="password" id="np-{{ row.user.id }}" name="new_password" minlength="6" placeholder="New password" autocomplete="new-password" required>
+          <button type="submit" class="btn btn-secondary btn-small">Reset</button>
+        </form>
+      </td>
+      <td class="cell-actions">
+        <div class="btn-row">
+          {% if row.can_promote %}
+          <form method="post" action="{{ url_for('admin.promote', user_id=row.user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-secondary btn-small">Make admin</button></form>
+          {% endif %}
+          {% if row.can_demote %}
+          <form method="post" action="{{ url_for('admin.demote', user_id=row.user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-secondary btn-small">Remove admin</button></form>
+          {% endif %}
+          {% if row.can_delete %}
+          <form method="post" action="{{ url_for('admin.delete_user', user_id=row.user.id) }}" onsubmit="return confirm('Delete {{ row.user.name|e }} and ALL of their posts, comments and photos? This cannot be undone.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-danger btn-small">{{ icon('trash') }} Delete</button></form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

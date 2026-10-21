@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, avatar %}
+{% block title %}{{ user.name }} - Family Blogger{% endblock %}
+{% block content %}
+<section class="card profile-head">
+  {{ avatar(user, 'xl') }}
+  <div class="info">
+    <h1>{{ user.name }} {% if user.is_admin %}<span class="badge badge-admin">{{ icon('shield') }} Admin</span>{% endif %}</h1>
+    <p class="muted" style="margin:0">@{{ user.username }} &middot; Member since {{ user.created_at|dateformat('%b %Y') }}</p>
+    {% if user.bio %}<p class="bio" style="margin-top:.6rem">{{ user.bio }}</p>{% endif %}
+    {% if is_own_profile %}<a class="btn btn-secondary btn-small" href="{{ url_for('settings.index') }}">{{ icon('edit') }} Edit profile</a>{% endif %}
+  </div>
+</section>
+
+<section class="card" aria-labelledby="mood-h">
+  <h2 id="mood-h">{{ icon('calendar') }} Mood, last 30 days</h2>
+  <div class="heatmap" role="list" aria-label="Mood calendar for the last 30 days">
+    {% for day in mood_calendar %}
+    {% set label = day.date|dateformat ~ ': ' ~ (day.info.label if day.info else 'No entry') %}
+    <div class="heat heat-{{ day.mood or 'none' }}" role="listitem" title="{{ label }}" aria-label="{{ label }}"></div>
+    {% endfor %}
+  </div>
+  <div class="legend" aria-hidden="true">
+    {% for key, m in MOODS.items() %}<span><i class="heat heat-{{ key }}"></i>{{ m.label }}</span>{% endfor %}
+    <span><i class="heat heat-none"></i>No entry</span>
+  </div>
+  <h3 style="margin-top:1.4rem">Mood over time</h3>
+  <div class="chart-wrap"><canvas id="mood-chart" data-url="{{ url_for('profile.moods_json', username=user.username) }}" role="img" aria-label="Line chart of mood over the last 90 days"></canvas></div>
+  <div class="chart-fallback" id="mood-fallback" hidden></div>
+  <noscript>
+    <table class="chart-fallback"><thead><tr><th>Date</th><th>Mood</th></tr></thead><tbody>
+      {% for day in mood_calendar if day.info %}<tr><td>{{ day.date|dateformat }}</td><td>{{ day.info.label }}</td></tr>{% endfor %}
+    </tbody></table>
+  </noscript>
+</section>
+
+<h2 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('book') }} Posts</span></h2>
+{% for post in posts %}
+  {% include 'partials/post_card.html' %}
+{% else %}
+  <div class="card empty"><p>No posts to show yet.</p></div>
+{% endfor %}
+{% include 'partials/pagination.html' %}
+{% endblock %}
+{% block scripts %}
+<script>window.FB_MOODS = {{ MOODS|tojson }};</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script src="{{ url_for('static', filename='js/mood-chart.js') }}" defer></script>
+{% endblock %}

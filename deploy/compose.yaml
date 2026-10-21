@@ -1,0 +1,19 @@
+services:
+  family-blogger:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: family-blogger:latest
+    container_name: family-blogger
+    restart: unless-stopped
+    # Runs as a normal user; ./data must exist and be owned by this UID:GID.
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      # Direct LAN access at http://<server-ip>:8765, and the target for Nginx Proxy Manager
+      - "${FB_PORT:-8765}:8765"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: ${TZ:-Europe/London}
+      # Trust X-Forwarded-* from Nginx Proxy Manager so HTTPS links/redirects work
+      FB_TRUST_PROXY: "1"

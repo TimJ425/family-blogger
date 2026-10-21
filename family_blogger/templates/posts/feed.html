@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon %}
+{% block title %}Home - Family Blogger{% endblock %}
+{% block content %}
+<div class="ptr" data-ptr aria-hidden="true"><span class="ptr-spinner"></span></div>
+<section class="card cta{{ ' cta-dupe' if not has_posted_today }}">
+  <h2>What's happening today?</h2>
+  <a class="btn btn-big" href="{{ url_for('posts.new_post') }}">{{ icon('edit') }} Write today's entry</a>
+</section>
+{% for post in posts %}
+  {% include 'partials/post_card.html' %}
+{% else %}
+  <div class="card empty">
+    <img src="{{ url_for('static', filename='img/logo/mark.svg') }}" alt="">
+    <h2>No posts yet</h2>
+    <p>Be the first to share something with the family.</p>
+    <a class="btn" href="{{ url_for('posts.new_post') }}">Write a post</a>
+  </div>
+{% endfor %}
+{% include 'partials/pagination.html' %}
+<div class="fab-space" aria-hidden="true"></div>
+{% if not has_posted_today %}
+<a class="fab" id="diary-fab" href="{{ url_for('posts.new_post') }}">{{ icon('edit') }} Write today's diary</a>
+{% endif %}
+{% endblock %}

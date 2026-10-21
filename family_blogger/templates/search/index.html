@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, field_errors %}
+{% block title %}Search - Family Blogger{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('search') }} Search</span></h1>
+<form method="get" action="{{ url_for('search.search') }}" class="card search-form">
+  <div class="field">
+    <label for="q">Words</label>
+    <input type="search" id="q" name="q" value="{{ form.q.data or '' }}" placeholder="Search titles and stories">
+    {{ field_errors(form.q) }}
+  </div>
+  <div class="field">
+    <label for="author">Author</label>
+    <select id="author" name="author">
+      {% for value, label in form.author.choices %}<option value="{{ value }}" {{ 'selected' if (form.author.data or '') == value }}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="mood">Mood</label>
+    <select id="mood" name="mood">
+      {% for value, label in form.mood.choices %}<option value="{{ value }}" {{ 'selected' if (form.mood.data or '') == value }}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="date_from">From date</label>
+    <input type="date" id="date_from" name="date_from" value="{{ form.date_from.data or '' }}">
+    {{ field_errors(form.date_from) }}
+  </div>
+  <div class="field">
+    <label for="date_to">To date</label>
+    <input type="date" id="date_to" name="date_to" value="{{ form.date_to.data or '' }}">
+    {{ field_errors(form.date_to) }}
+  </div>
+  <div class="field"><button type="submit" class="btn btn-big">{{ icon('search') }} Search</button></div>
+</form>
+
+{% if not searched %}
+  <p class="card muted">Type something above, or pick an author, mood or dates, then press Search.</p>
+{% elif not posts %}
+  <div class="card empty"><h2>No posts found</h2><p>Try different words or fewer filters.</p></div>
+{% else %}
+  <p class="card" aria-live="polite">{{ pagination.total if pagination else posts|length }} post{{ '' if (pagination.total if pagination else posts|length) == 1 else 's' }} found.</p>
+  {% for post in posts %}{% include 'partials/post_card.html' %}{% endfor %}
+  {% include 'partials/pagination.html' %}
+{% endif %}
+{% endblock %}

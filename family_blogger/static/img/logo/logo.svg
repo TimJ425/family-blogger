@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+  <g transform="scale(0.9375)">
+    <path d="M8 30 L32 10 L56 30" fill="none" stroke="#E07A5F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="14" y="28" width="36" height="26" rx="6" fill="#F4D35E"/>
+    <path d="M32 50 C24 45 20 41 20 37 C20 34 22 32 25 32 C28 32 30.5 34 32 36 C33.5 34 36 32 39 32 C42 32 44 34 44 37 C44 41 40 45 32 50 Z" fill="#E76F7A"/>
+  </g>
+  <text x="70" y="41" font-family="Nunito, Arial, sans-serif" font-size="26" font-weight="800" fill="#5B4B8A" textLength="166" lengthAdjust="spacingAndGlyphs">Family Blogger</text>
+</svg>

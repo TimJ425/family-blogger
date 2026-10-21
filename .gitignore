@@ -1,0 +1,25 @@
+# Local Python environment
+.venv/
+
+# App data: databases, uploads, secret keys (personal - never commit)
+instance/
+data/
+deploy/data/
+backups/
+deploy/backups/
+
+# Environment files (keep the example)
+.env
+*.env
+!.env.example
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Logs and OS / editor clutter
+*.log
+.DS_Store
+.idea/
+.vscode/

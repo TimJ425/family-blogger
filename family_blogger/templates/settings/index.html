@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, field_errors, file_button %}
+{% block title %}Settings - Family Blogger{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('settings') }} Settings</span></h1>
+
+<section class="card" id="profile" aria-labelledby="profile-h">
+  <h2 id="profile-h">{{ icon('user') }} Your profile</h2>
+  <form method="post" action="{{ url_for('settings.profile') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="display_name">Your name</label>
+      <input type="text" id="display_name" name="display_name" maxlength="60" value="{{ profile_form.display_name.data or '' }}">
+      {{ field_errors(profile_form.display_name) }}
+    </div>
+    <div class="field">
+      <label for="bio">About you</label>
+      <textarea id="bio" name="bio" maxlength="500" rows="4">{{ profile_form.bio.data or '' }}</textarea>
+      {{ field_errors(profile_form.bio) }}
+    </div>
+    {% set form = profile_form %}{% set show_current = current_user.has_uploaded_avatar %}
+    {% include 'partials/avatar_picker.html' %}
+    <button type="submit" class="btn">Save profile</button>
+  </form>
+</section>
+
+<section class="card" id="theme" aria-labelledby="theme-h">
+  <h2 id="theme-h">{{ icon('palette') }} Colours</h2>
+  <form method="post" action="{{ url_for('settings.theme') }}" data-theme-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set form = theme_form %}
+    {% include 'partials/theme_picker.html' %}
+    <button type="submit" class="btn">Save colours</button>
+  </form>
+</section>
+
+<section class="card" id="background" aria-labelledby="bg-h">
+  <h2 id="bg-h">{{ icon('image') }} Background picture</h2>
+  <div class="bg-preview" style="background-image:url('{{ theme.background_url }}')" role="img" aria-label="Current background preview"></div>
+  <form method="post" action="{{ url_for('settings.background') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <span class="label">Choose a new picture</span>
+      {{ file_button('background-file', 'background', 'Choose a picture', icon_name='image', preview='background-preview', required=True) }}
+      <div id="background-preview" class="preview-grid"></div>
+      {{ field_errors(background_form.background) }}
+    </div>
+    <button type="submit" class="btn btn-big">{{ icon('upload') }} Use this background</button>
+  </form>
+  {% if theme.has_custom_background %}
+  <form method="post" action="{{ url_for('settings.remove_background') }}" style="margin-top:12px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-secondary">Remove my background</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card" id="password" aria-labelledby="pw-h">
+  <h2 id="pw-h">{{ icon('lock') }} Change password</h2>
+  <form method="post" action="{{ url_for('settings.password') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="current_password">Current password</label>
+      <input type="password" id="current_password" name="current_password" autocomplete="current-password" required>
+      {{ field_errors(password_form.current_password) }}
+    </div>
+    <div class="field">
+      <label for="new_password">New password</label>
+      <input type="password" id="new_password" name="new_password" autocomplete="new-password" required>
+      <p class="hint">At least 6 characters.</p>
+      {{ field_errors(password_form.new_password) }}
+    </div>
+    <div class="field">
+      <label for="confirm_password">New password again</label>
+      <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+      {{ field_errors(password_form.confirm_password) }}
+    </div>
+    <button type="submit" class="btn">Change password</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>{% endblock %}

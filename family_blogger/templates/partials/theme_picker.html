@@ -1,0 +1,36 @@
+{# expects form with theme fields #}
+<div data-theme-picker data-presets='{{ THEME_PRESETS|tojson|forceescape }}'>
+  <fieldset>
+    <legend>Choose a colour theme</legend>
+    <div class="swatch-grid" role="radiogroup">
+      {% for key, p in THEME_PRESETS.items() %}
+      <div>
+        <input class="choice-input" type="radio" name="theme_preset" id="preset-{{ key }}" value="{{ key }}" {{ 'checked' if form.theme_preset.data == key }}>
+        <label class="swatch-option" for="preset-{{ key }}">
+          <span class="swatches" aria-hidden="true"><i style="background:{{ p.primary }}"></i><i style="background:{{ p.accent }}"></i><i style="background:{{ p.bg }}"></i><i style="background:{{ p.text }}"></i></span>
+          {{ p.label }}
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    {% if form.theme_preset.errors %}<ul class="errors">{% for e in form.theme_preset.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  </fieldset>
+  <fieldset>
+    <legend>Or pick your own colours</legend>
+    <div class="check">
+      <input type="checkbox" id="custom_colours" name="custom_colours" value="y" {{ 'checked' if form.custom_colours.data }}>
+      <label for="custom_colours">Use my own colours</label>
+    </div>
+    <div class="colour-grid">
+      {% for name, label in [('primary','Main colour'),('accent','Accent'),('bg','Background'),('card','Cards'),('text','Text')] %}
+      {% set f = form['colour_' ~ name] %}
+      <div class="colour-field">
+        <input type="color" id="colour_{{ name }}" name="colour_{{ name }}" value="{{ f.data or theme[name] }}" data-var="{{ name }}">
+        <label for="colour_{{ name }}">{{ label }}</label>
+      </div>
+      {% if f.errors %}<ul class="errors">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      {% endfor %}
+    </div>
+    <p class="hint">Changes preview instantly on this page.</p>
+  </fieldset>
+</div>

@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon, field_errors, file_button %}
+{% block title %}{{ 'New post' if post is none else 'Edit post' }} - Family Blogger{% endblock %}
+{% block content %}
+<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ 'Write a new post' if post is none else 'Edit your post' }}</span></h1>
+<form method="post" class="card" enctype="multipart/form-data"
+      action="{{ url_for('posts.new_post') if post is none else url_for('posts.edit_post', post_id=post.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" maxlength="120" value="{{ form.title.data or '' }}" required>
+    {{ field_errors(form.title) }}
+  </div>
+  <div class="field">
+    <label for="body">Your story</label>
+    <textarea id="body" name="body" rows="8" maxlength="20000" aria-describedby="body-hint">{{ form.body.data or '' }}</textarea>
+    <p class="hint" id="body-hint">Tip: use **bold**, *italic*, lists (start lines with - ), [links](https://example.com) and # headings.</p>
+    {{ field_errors(form.body) }}
+  </div>
+
+  <fieldset>
+    <legend>How are you feeling?</legend>
+    <div class="mood-picker" role="radiogroup">
+      <div>
+        <input class="choice-input" type="radio" name="mood" id="mood-none" value="" {{ 'checked' if not form.mood.data }}>
+        <label class="mood-option" for="mood-none"><span style="font-size:2rem" aria-hidden="true">&#9898;</span>No mood</label>
+      </div>
+      {% for key, m in MOODS.items() %}
+      <div>
+        <input class="choice-input" type="radio" name="mood" id="mood-{{ key }}" value="{{ key }}" {{ 'checked' if form.mood.data == key }}>
+        <label class="mood-option" for="mood-{{ key }}"><img src="{{ url_for('static', filename=m.icon) }}" alt="">{{ m.label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+    {{ field_errors(form.mood) }}
+  </fieldset>
+
+  <fieldset>
+    <legend>Who can see this?</legend>
+    <div class="vis-picker" role="radiogroup">
+      {% set vdesc = {'everyone': 'Home feed and your profile', 'profile': 'Only on my profile (family can see)', 'private': 'Only me'} %}
+      {% for key, v in VISIBILITIES.items() %}
+      <div>
+        <input class="choice-input" type="radio" name="visibility" id="vis-{{ key }}" value="{{ key }}" {{ 'checked' if (form.visibility.data or 'everyone') == key }}>
+        <label class="vis-option" for="vis-{{ key }}">
+          <span class="icon" aria-hidden="true" style="--ic:url('{{ url_for('static', filename=v.icon) }}')"></span>
+          <strong>{{ v.label }}</strong>
+          <span class="desc">{{ vdesc[key] }}</span>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    {{ field_errors(form.visibility) }}
+  </fieldset>
+
+  {% if post is not none and post.photos %}
+  <fieldset>
+    <legend>Current photos (tick to remove)</legend>
+    <div class="existing-photos">
+      {% for photo in post.photos %}
+      <figure>
+        <img src="{{ photo.url }}" alt="Photo {{ loop.index }} of this post">
+        <div class="check"><input type="checkbox" name="remove_photos" id="rm-{{ photo.id }}" value="{{ photo.id }}"><label for="rm-{{ photo.id }}">Remove</label></div>
+      </figure>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+
+  <div class="field">
+    <span class="label">{{ icon('image') }} Add photos</span>
+    <div class="file-btns">
+      {{ file_button('photos-camera', 'photos', '📷 Take photo', icon_name=None, preview='photo-preview', capture='environment') }}
+      {{ file_button('photos', 'photos', '🖼️ Choose photos', icon_name=None, preview='photo-preview', multiple=True) }}
+    </div>
+    <p class="hint">Up to 10 photos per post.</p>
+    <div id="photo-preview" class="preview-grid"></div>
+    {{ field_errors(form.photos) }}
+  </div>
+
+  <div class="btn-row">
+    <button type="submit" class="btn btn-big">{{ 'Publish' if post is none else 'Save changes' }}</button>
+    <a class="btn btn-secondary btn-big" href="{{ url_for('posts.feed') if post is none else post.url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% from 'macros.html' import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="{{ theme.primary }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icons-app/icon-180.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Family Blogger">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>{% block title %}Family Blogger{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    :root {
+      --fb-primary: {{ theme.primary }}; --fb-accent: {{ theme.accent }};
+      --fb-bg: {{ theme.bg }}; --fb-card: {{ theme.card }}; --fb-text: {{ theme.text }};
+      --fb-bg-image: url("{{ theme.background_url }}");
+    }
+  </style>
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body class="{{ 'theme-dark' if theme.is_dark }}" data-preset="{{ theme.preset }}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% set ep = request.endpoint or '' %}
+  <header class="site-header">
+    <div class="container wide header-inner">
+      <a class="brand" href="{{ url_for('posts.feed') }}" aria-label="Family Blogger home">
+        <img src="{{ url_for('static', filename='img/logo/logo.svg') }}" alt="Family Blogger">
+      </a>
+      {% if current_user.is_authenticated and current_user.onboarded %}
+      <nav class="main-nav" aria-label="Main">
+        <ul>
+          <li><a href="{{ url_for('posts.feed') }}" {% if ep == 'posts.feed' %}aria-current="page"{% endif %}>{{ icon('home') }} Home</a></li>
+          <li><a href="{{ url_for('profile.family') }}" {% if ep == 'profile.family' %}aria-current="page"{% endif %}>{{ icon('users') }} Family</a></li>
+          <li><a href="{{ url_for('search.search') }}" {% if ep == 'search.search' %}aria-current="page"{% endif %}>{{ icon('search') }} Search</a></li>
+          <li><a href="{{ url_for('posts.new_post') }}" {% if ep == 'posts.new_post' %}aria-current="page"{% endif %}>{{ icon('plus') }} New post</a></li>
+          <li><a href="{{ current_user.profile_url }}" {% if ep == 'profile.view_profile' and request.view_args.get('username', '')|lower == current_user.username|lower %}aria-current="page"{% endif %}>{{ icon('user') }} Profile</a></li>
+          <li><a href="{{ url_for('settings.index') }}" {% if ep == 'settings.index' %}aria-current="page"{% endif %}>{{ icon('settings') }} Settings</a></li>
+          {% if current_user.is_admin %}
+          <li><a href="{{ url_for('admin.index') }}" {% if ep == 'admin.index' %}aria-current="page"{% endif %}>{{ icon('shield') }} Admin</a></li>
+          {% endif %}
+          <li>
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="link-btn">{{ icon('logout') }} Log out</button>
+            </form>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container {% block container_class %}{% endblock %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes" role="status" aria-live="polite">
+          {% for category, message in messages %}
+          <li class="flash flash-{{ category if category in ('success', 'error', 'info') else 'info' }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Made with love for our family. Family Blogger</p>
+  </footer>
+  {% if current_user.is_authenticated and current_user.onboarded %}
+  {% set on_me = ep in ('settings.index', 'admin.index') or (ep == 'profile.view_profile' and request.view_args.get('username', '')|lower == current_user.username|lower) %}
+  <nav class="tabbar" aria-label="Main (mobile)">
+    <a class="tab" href="{{ url_for('posts.feed') }}" {% if ep == 'posts.feed' %}aria-current="page"{% endif %}><span class="tab-ico">{{ icon('home') }}</span>Home</a>
+    <a class="tab" href="{{ url_for('profile.family') }}" {% if ep == 'profile.family' %}aria-current="page"{% endif %}><span class="tab-ico">{{ icon('users') }}</span>Family</a>
+    <a class="tab tab-new" href="{{ url_for('posts.new_post') }}" aria-label="New post" {% if ep == 'posts.new_post' %}aria-current="page"{% endif %}><span class="tab-plus">{{ icon('plus') }}</span><span class="tab-label">New post</span></a>
+    <a class="tab" href="{{ url_for('search.search') }}" {% if ep == 'search.search' %}aria-current="page"{% endif %}><span class="tab-ico">{{ icon('search') }}</span>Search</a>
+    <a class="tab tab-me" href="#me-sheet" data-sheet-open aria-haspopup="dialog" aria-expanded="false" {% if on_me %}aria-current="page"{% endif %}><span class="tab-ico"><img class="avatar" src="{{ current_user.avatar_url }}" alt="" width="28" height="28"></span>Me</a>
+  </nav>
+  <div class="me-sheet" id="me-sheet" role="dialog" aria-label="Your menu">
+    <a class="sheet-backdrop" href="#" tabindex="-1" aria-hidden="true" data-sheet-close></a>
+    <div class="sheet-panel">
+      <div class="sheet-who"><img class="avatar avatar-sm" src="{{ current_user.avatar_url }}" alt=""><strong>{{ current_user.name }}</strong></div>
+      <ul>
+        <li><a href="{{ current_user.profile_url }}">{{ icon('user') }} My profile</a></li>
+        <li><a href="{{ url_for('settings.index') }}" {% if ep == 'settings.index' %}aria-current="page"{% endif %}>{{ icon('settings') }} Settings</a></li>
+        {% if current_user.is_admin %}
+        <li><a href="{{ url_for('admin.index') }}" {% if ep == 'admin.index' %}aria-current="page"{% endif %}>{{ icon('shield') }} Admin</a></li>
+        {% endif %}
+        <li>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="sheet-logout">{{ icon('logout') }} Log out</button>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

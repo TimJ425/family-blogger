@@ -1,0 +1,30 @@
+{% from 'macros.html' import icon, avatar, mood_badge, visibility_badge %}
+<article class="card post-card">
+  <header class="post-meta">
+    <a href="{{ post.author.profile_url }}" aria-label="{{ post.author.name }}'s profile">{{ avatar(post.author, 'md') }}</a>
+    <div class="who">
+      <a href="{{ post.author.profile_url }}">{{ post.author.name }}</a>
+      <small class="muted"><time datetime="{{ post.created_at.isoformat() }}">{{ post.created_at|datetimeformat }}</time>{% if post.is_edited %} (edited){% endif %}</small>
+    </div>
+    <div class="badges">{{ mood_badge(post) }}{{ visibility_badge(post) }}</div>
+  </header>
+  <h2 class="post-title"><a href="{{ post.url }}">{{ post.title }}</a></h2>
+  {% if post.body %}<div class="post-body">{{ post.body|markdown }}</div>{% endif %}
+  {% if post.photos %}
+  <div class="photo-grid">
+    {% for photo in post.photos %}
+    <a href="{{ photo.url }}" target="_blank" rel="noopener"><img src="{{ photo.url }}" alt="Photo {{ loop.index }} from {{ post.author.name }}'s post &quot;{{ post.title }}&quot;" loading="lazy"></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="post-footer">
+    {% include 'partials/reactions.html' %}
+    <a class="comment-link spacer" href="{{ post.url }}#comments">{{ icon('comment') }} {{ post.comment_count }} comment{{ '' if post.comment_count == 1 else 's' }}</a>
+  </div>
+  {% if post.can_edit(current_user) or post.can_delete(current_user) %}
+  <div class="post-actions" style="margin-top:12px">
+    {% if post.can_edit(current_user) %}<a class="btn btn-secondary btn-small" href="{{ url_for('posts.edit_post', post_id=post.id) }}">{{ icon('edit') }} Edit</a>{% endif %}
+    {% if post.can_delete(current_user) %}{% set delete_next = request.full_path.rstrip('?') %}{% include 'partials/delete_post_form.html' %}{% endif %}
+  </div>
+  {% endif %}
+</article>

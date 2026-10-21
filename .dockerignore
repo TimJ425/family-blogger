@@ -1,0 +1,17 @@
+.venv/
+instance/
+data/
+backups/
+deploy/data/
+deploy/backups/
+deploy/.env
+tests/
+**/__pycache__/
+*.pyc
+.DS_Store
+.git/
+.gitignore
+TEMPLATE_CONTRACT.md
+docs/
+CONTRIBUTING.md
+CLAUDE.md

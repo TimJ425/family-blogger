@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 79
+max-doc-length = 72
+docstring-convention = google
+exclude = .venv,instance,deploy/data,deploy/backups,__pycache__
+# self/cls stay unannotated (older flake8-annotations codes)
+extend-ignore = ANN101,ANN102
+banned-modules =
+    typing = Use builtins or project classes instead (see CONTRIBUTING.md)
+    typing_extensions = Use builtins or project classes instead (see CONTRIBUTING.md)
+    collections.abc = Use object or a concrete builtin instead (see CONTRIBUTING.md)
