@@ -45,27 +45,44 @@ Most entries are a **daily diary**: how you're feeling and what you got up to to
 
 ## Install with Docker
 
-You'll need a Linux server (or any machine) with [Docker](https://docs.docker.com/engine/install/) and Docker Compose.
+You'll need a Linux server (or any machine) with [Docker](https://docs.docker.com/engine/install/) and Docker Compose. There's a ready-made image at `ghcr.io/timj425/family-blogger`, so you don't need the source code:
+
+```bash
+mkdir family-blogger && cd family-blogger
+mkdir -p data              # where the database and photos are stored
+curl -fsSL -o compose.yaml https://raw.githubusercontent.com/TimJ425/family-blogger/main/deploy/compose.ghcr.yaml
+curl -fsSL -o .env https://raw.githubusercontent.com/TimJ425/family-blogger/main/deploy/.env.example
+curl -fsSL -o backup.sh https://raw.githubusercontent.com/TimJ425/family-blogger/main/deploy/backup.sh && chmod +x backup.sh
+docker compose up -d
+```
+
+The folder then only holds `compose.yaml`, `.env`, `backup.sh` and `data/`.
+
+<details>
+<summary>Prefer to build the image yourself?</summary>
 
 ```bash
 git clone https://github.com/TimJ425/family-blogger.git
 cd family-blogger/deploy
-mkdir -p data              # where the database and photos are stored
-cp .env.example .env       # adjust settings if needed (see below)
+mkdir -p data
+cp .env.example .env
 docker compose up -d --build
 ```
+
+</details>
 
 Check it's running with `docker compose ps`. The status should change to **healthy** within a few seconds.
 
 Then open **`http://<server-ip>:8765`**. **The first account you create becomes the admin**, so sign up yourself before sharing the link with the family.
 
-### Settings (`deploy/.env`)
+### Settings (`.env`)
 
 | Setting | Default | What it does |
 |---|---|---|
 | `PUID` / `PGID` | `1000` | The user the app runs as. These must match the owner of the `data/` folder; check yours with `id -u` and `id -g`. |
 | `FB_PORT` | `8765` | The port on your server. |
 | `TZ` | `Europe/London` | Your timezone, which decides which day a diary entry belongs to. |
+| `FB_TAG` | `latest` | The image version. Use `latest` for the newest build, or pin a release such as `1.0` or `1.0.2`. |
 
 After changing `.env`, run `docker compose up -d` to apply it.
 
@@ -87,19 +104,18 @@ Direct access at `http://<server-ip>:8765` keeps working alongside the domain.
 
 ```bash
 cd family-blogger
-git pull
-cd deploy
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-Your data in `deploy/data/` is kept.
+Your data in `data/` is kept. If you built the image yourself, run `git pull` and then `docker compose up -d --build` from `deploy/`.
 
 ### Backups
 
-`deploy/data/` holds everything: the database, the uploaded photos and the sign-in secret key. To make a backup while the app is running:
+`data/` holds everything: the database, the uploaded photos and the sign-in secret key. To make a backup while the app is running:
 
 ```bash
-cd family-blogger/deploy
+cd family-blogger
 ./backup.sh                # saves backups/family-blogger_<date>.tar.gz
 ./backup.sh /mnt/nas       # or save it to another folder
 ```
@@ -107,18 +123,18 @@ cd family-blogger/deploy
 To back up automatically every night at 3am, add this line with `crontab -e`:
 
 ```
-0 3 * * * cd /path/to/family-blogger/deploy && ./backup.sh >> backup.log 2>&1
+0 3 * * * cd /path/to/family-blogger && ./backup.sh >> backup.log 2>&1
 ```
 
 **To restore:**
 
 1. Stop the app with `docker compose down`.
-2. Unpack the backup and copy its files into `deploy/data/`.
+2. Unpack the backup and copy its files into `data/`.
 3. Start it again with `docker compose up -d`.
 
 ### Handy commands
 
-Run these from `deploy/`:
+Run these from the `family-blogger` folder:
 
 ```bash
 docker compose logs -f     # watch what's happening

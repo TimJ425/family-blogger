@@ -85,7 +85,8 @@ Before saying any change is finished, run both `tests/run_all.py` and `flake8`, 
 | `family_blogger/utils/` | `permissions.py` (all visibility rules), `uploads.py`, `markdown.py` |
 | `family_blogger/templates/`, `family_blogger/static/` | Jinja templates, CSS, JS, SVG and PNG assets |
 | `tests/` | Plain-script test suites; `run_all.py` runs them all |
-| `deploy/` | `Dockerfile`, `compose.yaml`, `backup.sh`, `.env.example` |
+| `deploy/` | `Dockerfile`, `compose.yaml` (builds from source), `compose.ghcr.yaml` (pulls the published image), `backup.sh`, `.env.example` |
+| `.github/workflows/docker.yml` | CI: flake8 + tests, then builds and pushes `ghcr.io/timj425/family-blogger` |
 | `instance/` | Local data: database, uploads and secret key. Git-ignored; never commit or read it into context |
 
 ## Privacy rules

@@ -1,0 +1,19 @@
+# Run the pre-built image from GHCR. No source code needed on the server:
+# just this file (saved as compose.yaml), a .env and a data/ folder.
+services:
+  family-blogger:
+    image: ghcr.io/timj425/family-blogger:${FB_TAG:-latest}
+    container_name: family-blogger
+    restart: unless-stopped
+    # Runs as a normal user; ./data must exist and be owned by this UID:GID.
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      # Direct LAN access at http://<server-ip>:8765, and the target for a
+      # reverse proxy such as Nginx Proxy Manager
+      - "${FB_PORT:-8765}:8765"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: ${TZ:-Europe/London}
+      # Trust X-Forwarded-* from the reverse proxy so HTTPS links work
+      FB_TRUST_PROXY: "1"

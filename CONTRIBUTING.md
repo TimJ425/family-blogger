@@ -34,6 +34,8 @@ Before you submit a change, both of these must pass with no errors:
 .venv/bin/flake8                    # PEP 8, docstrings, type hints, banned imports
 ```
 
+GitHub Actions runs the same checks on every push and pull request (`.github/workflows/docker.yml`). A Docker image is only published to GHCR when they pass.
+
 The tests use a temporary database, so your `instance/` data is never touched. Each suite is a plain script, so you can also run one on its own, for example `.venv/bin/python tests/test_backend.py`.
 
 ## Python rules
