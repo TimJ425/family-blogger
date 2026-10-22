@@ -2,7 +2,7 @@
 {% from 'macros.html' import icon, field_errors, file_button %}
 {% block title %}Settings - Family Blogger{% endblock %}
 {% block content %}
-<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('settings') }} Settings</span></h1>
+<h1 class="page-title"><span class="title-pill">{{ icon('settings') }} Settings</span></h1>
 
 <section class="card" id="profile" aria-labelledby="profile-h">
   <h2 id="profile-h">{{ icon('user') }} Your profile</h2>
@@ -36,7 +36,7 @@
 
 <section class="card" id="background" aria-labelledby="bg-h">
   <h2 id="bg-h">{{ icon('image') }} Background picture</h2>
-  <div class="bg-preview" style="background-image:url('{{ theme.background_url }}')" role="img" aria-label="Current background preview"></div>
+  <div class="bg-preview" role="img" aria-label="Current background preview"></div>
   <form method="post" action="{{ url_for('settings.background') }}" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
@@ -48,7 +48,7 @@
     <button type="submit" class="btn btn-big">{{ icon('upload') }} Use this background</button>
   </form>
   {% if theme.has_custom_background %}
-  <form method="post" action="{{ url_for('settings.remove_background') }}" style="margin-top:12px">
+  <form method="post" action="{{ url_for('settings.remove_background') }}" class="mt-s">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-secondary">Remove my background</button>
   </form>
@@ -76,6 +76,15 @@
       {{ field_errors(password_form.confirm_password) }}
     </div>
     <button type="submit" class="btn">Change password</button>
+  </form>
+</section>
+
+<section class="card" id="devices" aria-labelledby="devices-h">
+  <h2 id="devices-h">{{ icon('logout') }} Your devices</h2>
+  <p class="hint">Left yourself logged in on a phone or computer you don't use any more? This button logs you out on every other phone, tablet and computer. You stay logged in here, and your posts and settings are not changed.</p>
+  <form method="post" action="{{ url_for('settings.sign_out_everywhere') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-secondary">Log out on my other devices</button>
   </form>
 </section>
 {% endblock %}

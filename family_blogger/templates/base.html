@@ -13,18 +13,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>{% block title %}Family Blogger{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-  <style>
+  {# The only inline style: the viewer's theme colours (validated
+     #rrggbb values) and the preset swatches. The CSP nonce lets it
+     through; inline style attributes are not allowed anywhere. #}
+  <style nonce="{{ csp_nonce() }}">
     :root {
       --fb-primary: {{ theme.primary }}; --fb-accent: {{ theme.accent }};
       --fb-bg: {{ theme.bg }}; --fb-card: {{ theme.card }}; --fb-text: {{ theme.text }};
       --fb-bg-image: url("{{ theme.background_url }}");
     }
+    {% for key, p in THEME_PRESETS.items() %}
+    .swatches-{{ key }} i:nth-child(1) { background: {{ p.primary }}; }
+    .swatches-{{ key }} i:nth-child(2) { background: {{ p.accent }}; }
+    .swatches-{{ key }} i:nth-child(3) { background: {{ p.bg }}; }
+    .swatches-{{ key }} i:nth-child(4) { background: {{ p.text }}; }
+    {% endfor %}
   </style>
-  <script>document.documentElement.classList.add('js');</script>
+  <script src="{{ url_for('static', filename='js/js-class.js') }}"></script>
 </head>
 <body class="{{ 'theme-dark' if theme.is_dark }}" data-preset="{{ theme.preset }}">
   <a class="skip-link" href="#main">Skip to content</a>

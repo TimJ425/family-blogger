@@ -10,7 +10,13 @@ from werkzeug.wrappers import Response
 from ..constants import DEFAULT_AVATARS, THEME_COLOUR_KEYS, THEME_PRESETS
 from ..forms import BackgroundForm, ChangePasswordForm, ProfileForm, ThemeForm
 from ..models import db
-from ..utils.uploads import UploadError, delete_upload, has_file, save_image
+from ..utils import end_other_sessions
+from ..utils.uploads import (
+    UploadError,
+    commit_with_files,
+    has_file,
+    save_image,
+)
 from . import bp
 
 
@@ -93,26 +99,29 @@ def profile() -> str | Response:
         return _render(profile_form=form)
 
     user = current_user
+    new_files = []
+    old_files = []
     if has_file(form.avatar_upload.data):
         try:
             new_avatar = save_image(form.avatar_upload.data, "avatar")
         except UploadError as exc:
             flash(str(exc), "error")
             return _render(profile_form=form)
+        new_files.append(new_avatar)
         if user.has_uploaded_avatar:
-            delete_upload(user.avatar)
+            old_files.append(user.avatar)
         user.avatar = new_avatar
     elif (
         form.avatar.data in DEFAULT_AVATARS
         and form.avatar.data != user.avatar
     ):
         if user.has_uploaded_avatar:
-            delete_upload(user.avatar)
+            old_files.append(user.avatar)
         user.avatar = form.avatar.data
 
     user.display_name = (form.display_name.data or "").strip() or None
     user.bio = (form.bio.data or "").strip() or None
-    db.session.commit()
+    commit_with_files(new_files, old_files)
     flash("Profile saved.", "success")
     return redirect(url_for("settings.index"))
 
@@ -155,9 +164,9 @@ def background() -> str | Response:
     except UploadError as exc:
         flash(str(exc), "error")
         return _render(background_form=form)
-    delete_upload(current_user.background_image)
+    old = current_user.background_image
     current_user.background_image = filename
-    db.session.commit()
+    commit_with_files([filename], [old])
     flash("Background updated.", "success")
     return redirect(url_for("settings.index", _anchor="background"))
 
@@ -172,9 +181,9 @@ def remove_background() -> Response:
         A redirect to the background section of settings.
     """
     if current_user.background_image:
-        delete_upload(current_user.background_image)
+        old = current_user.background_image
         current_user.background_image = None
-        db.session.commit()
+        commit_with_files([], [old])
         flash("Background removed.", "success")
     return redirect(url_for("settings.index", _anchor="background"))
 
@@ -185,7 +194,8 @@ def password() -> str | Response:
 
     POST only, for signed-in users. It needs the current password. A
     bad form or wrong current password re-shows the settings page.
-    On success it redirects to settings.
+    On success the user stays logged in on this device, is logged out
+    everywhere else, and is redirected to settings.
 
     Returns:
         The settings page, or a redirect.
@@ -194,10 +204,32 @@ def password() -> str | Response:
     if form.validate_on_submit():
         if current_user.check_password(form.current_password.data):
             current_user.set_password(form.new_password.data)
+            end_other_sessions(current_user._get_current_object())
             db.session.commit()
-            flash("Password changed.", "success")
+            flash(
+                "Password changed. You've been logged out on your other "
+                "devices.",
+                "success",
+            )
             return redirect(url_for("settings.index"))
         form.current_password.errors.append(
             "That isn't your current password."
         )
     return _render(password_form=form)
+
+
+@bp.route("/settings/sign-out-everywhere", methods=["POST"])
+def sign_out_everywhere() -> Response:
+    """Log the user out on every other device.
+
+    POST only, for signed-in users. Rotates the session token, so
+    every other session and "Keep me logged in" cookie stops working,
+    and logs the user in again on this device only.
+
+    Returns:
+        A redirect to the devices section of settings.
+    """
+    end_other_sessions(current_user._get_current_object())
+    db.session.commit()
+    flash("Done! You've been logged out on your other devices.", "success")
+    return redirect(url_for("settings.index", _anchor="devices"))

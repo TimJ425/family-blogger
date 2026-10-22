@@ -1,0 +1,10 @@
+{# post author, time, mood and visibility; expects post #}
+{% from 'macros.html' import avatar, mood_badge, visibility_badge %}
+  <header class="post-meta">
+    <a href="{{ post.author.profile_url }}" aria-label="{{ post.author.name }}'s profile">{{ avatar(post.author, 'md') }}</a>
+    <div class="who">
+      <a href="{{ post.author.profile_url }}">{{ post.author.name }}</a>
+      <small class="muted"><time datetime="{{ post.created_at.isoformat() }}">{{ post.created_at|datetimeformat }}</time>{% if post.is_edited %} (edited){% endif %}</small>
+    </div>
+    <div class="badges">{{ mood_badge(post) }}{{ visibility_badge(post) }}</div>
+  </header>

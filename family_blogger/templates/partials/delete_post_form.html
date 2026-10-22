@@ -1,6 +1,2 @@
 {% from 'macros.html' import icon %}
-<form method="post" action="{{ url_for('posts.delete_post', post_id=post.id) }}" class="inline-form" onsubmit="return confirm('Delete this post?')">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  {% if delete_next is defined and delete_next %}<input type="hidden" name="next" value="{{ delete_next }}">{% endif %}
-  <button type="submit" class="btn btn-danger btn-small">{{ icon('trash') }} Delete</button>
-</form>
+<a href="{{ url_for('posts.delete_post', post_id=post.id, next=(delete_next if delete_next is defined and delete_next else none)) }}" class="btn btn-danger btn-small" data-confirm-post="Delete this post?" data-csrf="{{ csrf_token() }}"{% if delete_next is defined and delete_next %} data-next="{{ delete_next }}"{% endif %}>{{ icon('trash') }} Delete</a>

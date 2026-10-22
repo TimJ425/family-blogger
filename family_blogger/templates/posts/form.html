@@ -2,7 +2,7 @@
 {% from 'macros.html' import icon, field_errors, file_button %}
 {% block title %}{{ 'New post' if post is none else 'Edit post' }} - Family Blogger{% endblock %}
 {% block content %}
-<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ 'Write a new post' if post is none else 'Edit your post' }}</span></h1>
+<h1 class="page-title"><span class="title-pill">{{ 'Write a new post' if post is none else 'Edit your post' }}</span></h1>
 <form method="post" class="card" enctype="multipart/form-data"
       action="{{ url_for('posts.new_post') if post is none else url_for('posts.edit_post', post_id=post.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -23,7 +23,7 @@
     <div class="mood-picker" role="radiogroup">
       <div>
         <input class="choice-input" type="radio" name="mood" id="mood-none" value="" {{ 'checked' if not form.mood.data }}>
-        <label class="mood-option" for="mood-none"><span style="font-size:2rem" aria-hidden="true">&#9898;</span>No mood</label>
+        <label class="mood-option" for="mood-none"><span class="emoji-xl" aria-hidden="true">&#9898;</span>No mood</label>
       </div>
       {% for key, m in MOODS.items() %}
       <div>
@@ -38,14 +38,13 @@
   <fieldset>
     <legend>Who can see this?</legend>
     <div class="vis-picker" role="radiogroup">
-      {% set vdesc = {'everyone': 'Home feed and your profile', 'profile': 'Only on my profile (family can see)', 'private': 'Only me'} %}
       {% for key, v in VISIBILITIES.items() %}
       <div>
         <input class="choice-input" type="radio" name="visibility" id="vis-{{ key }}" value="{{ key }}" {{ 'checked' if (form.visibility.data or 'everyone') == key }}>
         <label class="vis-option" for="vis-{{ key }}">
-          <span class="icon" aria-hidden="true" style="--ic:url('{{ url_for('static', filename=v.icon) }}')"></span>
+          <span class="icon i-{{ v.icon|replace('img/icons/', '')|replace('.svg', '') }}" aria-hidden="true"></span>
           <strong>{{ v.label }}</strong>
-          <span class="desc">{{ vdesc[key] }}</span>
+          <span class="desc">{{ v.description }}</span>
         </label>
       </div>
       {% endfor %}
@@ -73,7 +72,7 @@
       {{ file_button('photos-camera', 'photos', '📷 Take photo', icon_name=None, preview='photo-preview', capture='environment') }}
       {{ file_button('photos', 'photos', '🖼️ Choose photos', icon_name=None, preview='photo-preview', multiple=True) }}
     </div>
-    <p class="hint">Up to 10 photos per post.</p>
+    <p class="hint">Up to {{ MAX_PHOTOS_PER_POST }} photos per post.</p>
     <div id="photo-preview" class="preview-grid"></div>
     {{ field_errors(form.photos) }}
   </div>

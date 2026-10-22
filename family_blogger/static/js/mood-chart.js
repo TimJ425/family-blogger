@@ -4,7 +4,11 @@
   var canvas = document.getElementById('mood-chart');
   if (!canvas) return;
   var fallback = document.getElementById('mood-fallback');
-  var moods = window.FB_MOODS || {};
+  // Mood labels come from a JSON data block (not an inline script),
+  // so the Content-Security-Policy can forbid inline scripts.
+  var moods = {};
+  var moodData = document.getElementById('mood-data');
+  try { moods = JSON.parse(moodData ? moodData.textContent : '{}') || {}; } catch (e) { moods = {}; }
   var byScore = {};
   Object.keys(moods).forEach(function (k) { byScore[moods[k].score] = moods[k]; });
 
@@ -41,15 +45,30 @@
       }
       if (typeof window.Chart === 'undefined') { showTable(data); return; }
       var primary = css('--fb-primary'), text = css('--fb-text'), grid = css('--fb-border');
-      var points = data.map(function (row) { return { x: row[0], y: row[2] }; });
+      // One label per day from the first mood to today, with null for
+      // days without a mood, so gaps show as gaps (no date adapter is
+      // vendored, so this stands in for a time scale).
+      var scores = {};
+      data.forEach(function (row) { scores[row[0]] = row[2]; });
+      var labels = [], values = [];
+      var DAY = 86400000;
+      function utcDay(iso) { var p = iso.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+      var now = new Date();
+      var last = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+      var first = utcDay(data[0][0]);
+      for (var t = first; t <= last; t += DAY) {
+        var iso = new Date(t).toISOString().slice(0, 10);
+        labels.push(iso);
+        values.push(Object.prototype.hasOwnProperty.call(scores, iso) ? scores[iso] : null);
+      }
       new window.Chart(canvas, {
         type: 'line',
         data: {
-          labels: data.map(function (r) { return r[0]; }),
+          labels: labels,
           datasets: [{
-            label: 'Mood', data: points.map(function (p) { return p.y; }),
+            label: 'Mood', data: values,
             borderColor: primary, backgroundColor: primary, pointRadius: 5, pointHoverRadius: 7,
-            tension: 0.3, spanGaps: true
+            tension: 0.3, spanGaps: false
           }]
         },
         options: {

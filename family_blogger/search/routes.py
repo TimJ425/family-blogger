@@ -5,11 +5,13 @@ from flask import current_app, render_template, request
 from flask_login import current_user
 from sqlalchemy import func, or_
 from sqlalchemy.sql import Select
+from werkzeug.wrappers import Response
 
 from ..constants import MOODS
 from ..forms import SearchForm
 from ..models import Post, User, db
-from ..utils.permissions import visible_clause
+from ..utils import last_page_redirect
+from ..utils.permissions import visible_clause, with_card_data
 from . import bp
 
 
@@ -34,10 +36,18 @@ def search_query(
     Returns:
         A select statement for the matching posts, newest first.
     """
-    stmt = db.select(Post).where(visible_clause(viewer))
-    if q:
-        like = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Post.title.ilike(like), Post.body.ilike(like)))
+    stmt = with_card_data(db.select(Post).where(visible_clause(viewer)))
+    if q and q.strip():
+        # Escape LIKE wildcards so "100%" and "a_b" match literally.
+        # fb_fold (see the app factory) case-folds non-ASCII text too.
+        term = q.strip().casefold()
+        for char in ("\\", "%", "_"):
+            term = term.replace(char, "\\" + char)
+        like = f"%{term}%"
+        stmt = stmt.where(or_(
+            func.fb_fold(Post.title).like(like, escape="\\"),
+            func.fb_fold(Post.body).like(like, escape="\\"),
+        ))
     if author:
         stmt = stmt.join(Post.author).where(
             func.lower(User.username) == author.strip().lower()
@@ -55,7 +65,7 @@ def search_query(
 
 
 @bp.route("/search")
-def search() -> str:
+def search() -> str | Response:
     """Show the search form and, when filters are given, results.
 
     For signed-in users. Filters come from the query string: ``q``,
@@ -91,6 +101,9 @@ def search() -> str:
             per_page=current_app.config["POSTS_PER_PAGE"],
             error_out=False,
         )
+        last_page = last_page_redirect(pagination, filter_keys)
+        if last_page:
+            return last_page
 
     # Current filters, minus page, for building pagination links.
     page_args = {

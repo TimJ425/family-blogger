@@ -33,6 +33,7 @@ from family_blogger.utils.permissions import (  # noqa: E402
     feed_query,
     profile_query,
 )
+from helpers import join_family  # noqa: E402
 
 SCRATCH = tempfile.mkdtemp(prefix="fb-test-")
 atexit.register(shutil.rmtree, SCRATCH, ignore_errors=True)
@@ -185,45 +186,16 @@ with app.test_request_context():
     )
     check(anon.get("/login").status_code == 200, "login page public")
 
-    # --- signup ---
+    # --- signup (first member) and added members ---
     clients = {}
     for name in ("Alice", "bob", "carol"):
-        c = app.test_client()
-        r = c.post(
-            "/signup",
-            data={
-                "username": name,
-                "password": "secret1",
-                "confirm_password": "secret1",
-            },
-        )
+        c = join_family(app, name)
+        r = c.get("/")
         check(
             r.status_code == 302 and r.location.endswith("/welcome"),
-            f"signup {name}",
+            f"join {name}",
         )
         clients[name] = c
-    r = app.test_client().post(
-        "/signup",
-        data={
-            "username": "ALICE",
-            "password": "secret1",
-            "confirm_password": "secret1",
-        },
-    )
-    check(
-        r.status_code == 200
-        and "username" in last_ctx("auth/signup.html")["form"].errors,
-        "case-insensitive unique",
-    )
-    r = app.test_client().post(
-        "/signup",
-        data={"username": "a b", "password": "123", "confirm_password": "123"},
-    )
-    errs = last_ctx("auth/signup.html")["form"].errors
-    check(
-        "username" in errs and "password" in errs,
-        "username/password validation",
-    )
 
     alice, bob, carol = (
         User.find_by_username(n) for n in ("alice", "bob", "carol")
@@ -267,6 +239,29 @@ with app.test_request_context():
     with Image.open(os.path.join(INST, "uploads", alice.avatar)) as im:
         check(im.size == (256, 256), "avatar 256 square")
     check(alice.theme["primary"] == "#0284c7", "ocean preset applied")
+    # Adding members uses the sign-up username and password rules.
+    r = ca.post(
+        "/admin/members",
+        data={
+            "username": "ALICE",
+            "password": "secret1",
+            "confirm_password": "secret1",
+        },
+    )
+    check(
+        r.status_code == 200
+        and "username" in last_ctx("admin/index.html")["add_form"].errors,
+        "case-insensitive unique",
+    )
+    ca.post(
+        "/admin/members",
+        data={"username": "a b", "password": "123", "confirm_password": "123"},
+    )
+    errs = last_ctx("admin/index.html")["add_form"].errors
+    check(
+        "username" in errs and "password" in errs,
+        "username/password validation",
+    )
     for c in (cb, cc):
         c.post(
             "/welcome",
@@ -547,15 +542,24 @@ with app.test_request_context():
     check(len(cmts) == 2, "comments added")
     bob_c, carol_c = cmts
     check(
-        cc.post(f"/comment/{bob_c.id}/delete").status_code == 403,
+        cc.post(
+            f"/comment/{bob_c.id}/delete", data={"confirm": "yes"}
+        ).status_code
+        == 403,
         "carol can't delete bob's comment",
     )
     check(
-        ca.post(f"/comment/{carol_c.id}/delete").status_code == 302,
+        ca.post(
+            f"/comment/{carol_c.id}/delete", data={"confirm": "yes"}
+        ).status_code
+        == 302,
         "post author deletes comment",
     )
     check(
-        cb.post(f"/comment/{bob_c.id}/delete").status_code == 302,
+        cb.post(
+            f"/comment/{bob_c.id}/delete", data={"confirm": "yes"}
+        ).status_code
+        == 302,
         "author deletes own comment",
     )
 
@@ -599,11 +603,11 @@ with app.test_request_context():
     )
     p = db.session.get(Post, a_every)
     db.session.refresh(p)
-    check(
-        p.user_reacted(carol, "heart") and not p.user_reacted(bob, "heart"),
-        "user_reacted",
-    )
     summ = p.reaction_summary(carol)
+    check(
+        not p.reaction_summary(bob)[0]["reacted"],
+        "reaction_summary other user not reacted",
+    )
     check(
         summ[0]["kind"] == "heart"
         and summ[0]["reacted"]
@@ -653,15 +657,24 @@ with app.test_request_context():
         "removed photo deleted from disk",
     )
     check(
-        cb.post(f"/post/{a_every}/delete").status_code == 403,
+        cb.post(
+            f"/post/{a_every}/delete", data={"confirm": "yes"}
+        ).status_code
+        == 403,
         "bob can't delete alice post",
     )
     check(
-        ca.post(f"/post/{b_every}/delete").status_code == 302,
+        ca.post(
+            f"/post/{b_every}/delete", data={"confirm": "yes"}
+        ).status_code
+        == 302,
         "admin deletes any post",
     )
     check(db.session.get(Post, b_every) is None, "post gone")
-    r = ca.post(f"/post/{a_prof}/delete", data={"next": f"/post/{a_prof}"})
+    r = ca.post(
+        f"/post/{a_prof}/delete",
+        data={"next": f"/post/{a_prof}", "confirm": "yes"},
+    )
     check(
         r.status_code == 302 and r.location.endswith("/"),
         "delete never redirects to dead permalink",
@@ -731,7 +744,10 @@ with app.test_request_context():
     cc2.post(f"/post/{a_every}/comment", data={"body": "c2"})
     cc2.post(f"/post/{a_every}/react/wow")
     ca2.post(f"/admin/user/{bob.id}/promote")
-    r = cb2.post(f"/admin/user/{alice.id}/delete")
+    r = cb2.post(
+        f"/admin/user/{alice.id}/delete",
+        data={"confirm": "yes", "confirm_name": alice.username},
+    )
     check(db.session.get(User, alice.id) is None, "user deleted")
     check(
         db.session.scalar(
@@ -899,7 +915,7 @@ with app.test_request_context():
     )
     check(
         "<img" not in html
-        and 'rel="nofollow"' in html
+        and 'rel="nofollow noopener noreferrer"' in html
         and 'href="javascript' not in html,
         f"img/links {html}",
     )

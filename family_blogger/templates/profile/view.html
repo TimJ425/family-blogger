@@ -6,8 +6,8 @@
   {{ avatar(user, 'xl') }}
   <div class="info">
     <h1>{{ user.name }} {% if user.is_admin %}<span class="badge badge-admin">{{ icon('shield') }} Admin</span>{% endif %}</h1>
-    <p class="muted" style="margin:0">@{{ user.username }} &middot; Member since {{ user.created_at|dateformat('%b %Y') }}</p>
-    {% if user.bio %}<p class="bio" style="margin-top:.6rem">{{ user.bio }}</p>{% endif %}
+    <p class="muted m-0">@{{ user.username }} &middot; Member since {{ user.created_at|dateformat('%b %Y') }}</p>
+    {% if user.bio %}<p class="bio mt-xs">{{ user.bio }}</p>{% endif %}
     {% if is_own_profile %}<a class="btn btn-secondary btn-small" href="{{ url_for('settings.index') }}">{{ icon('edit') }} Edit profile</a>{% endif %}
   </div>
 </section>
@@ -24,7 +24,7 @@
     {% for key, m in MOODS.items() %}<span><i class="heat heat-{{ key }}"></i>{{ m.label }}</span>{% endfor %}
     <span><i class="heat heat-none"></i>No entry</span>
   </div>
-  <h3 style="margin-top:1.4rem">Mood over time</h3>
+  <h3 class="mt-xl">Mood over time</h3>
   <div class="chart-wrap"><canvas id="mood-chart" data-url="{{ url_for('profile.moods_json', username=user.username) }}" role="img" aria-label="Line chart of mood over the last 90 days"></canvas></div>
   <div class="chart-fallback" id="mood-fallback" hidden></div>
   <noscript>
@@ -34,7 +34,7 @@
   </noscript>
 </section>
 
-<h2 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('book') }} Posts</span></h2>
+<h2 class="page-title"><span class="title-pill">{{ icon('book') }} Posts</span></h2>
 {% for post in posts %}
   {% include 'partials/post_card.html' %}
 {% else %}
@@ -43,7 +43,7 @@
 {% include 'partials/pagination.html' %}
 {% endblock %}
 {% block scripts %}
-<script>window.FB_MOODS = {{ MOODS|tojson }};</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<script type="application/json" id="mood-data">{{ MOODS|tojson }}</script>
+<script src="{{ url_for('static', filename='vendor/chart-4.4.1.umd.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/mood-chart.js') }}" defer></script>
 {% endblock %}

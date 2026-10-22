@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import icon %}
+{% block title %}{{ heading }} - Family Blogger{% endblock %}
+{% block content %}
+<h1 class="page-title"><span class="title-pill">Are you sure?</span></h1>
+<form method="post" class="card" action="{{ action_url }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="confirm" value="yes">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <h2>{{ heading }}</h2>
+  <p>{{ message }}</p>
+  {% if error %}<ul class="errors" role="alert"><li>{{ error }}</li></ul>{% endif %}
+  {% if require_text %}
+  <div class="field">
+    <label for="confirm_name">To be sure, type their username: <strong>{{ require_text }}</strong></label>
+    <input type="text" id="confirm_name" name="confirm_name" autocomplete="off" autocapitalize="off" required>
+  </div>
+  {% endif %}
+  <div class="btn-row">
+    <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel, keep it</a>
+    <button type="submit" class="btn btn-danger">{{ icon('trash') }} {{ confirm_label }}</button>
+  </div>
+</form>
+{% endblock %}

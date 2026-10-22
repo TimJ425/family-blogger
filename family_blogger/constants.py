@@ -48,7 +48,14 @@ THEME_PRESETS = {
     },
 }
 DEFAULT_PRESET = "sunny"
-THEME_COLOUR_KEYS = ("primary", "accent", "bg", "card", "text")
+THEME_COLOUR_LABELS = {
+    "primary": "Main colour",
+    "accent": "Accent",
+    "bg": "Background",
+    "card": "Cards",
+    "text": "Text",
+}
+THEME_COLOUR_KEYS = tuple(THEME_COLOUR_LABELS)
 
 # Default avatars, served from static/img/avatars/<name>.svg
 DEFAULT_AVATARS = [

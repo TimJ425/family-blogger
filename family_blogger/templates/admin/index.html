@@ -1,19 +1,47 @@
 {% extends 'base.html' %}
-{% from 'macros.html' import icon, avatar %}
+{% from 'macros.html' import icon, avatar, field_errors %}
 {% block title %}Admin - Family Blogger{% endblock %}
 {% block container_class %}wide{% endblock %}
 {% block content %}
-<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('shield') }} Family admin</span></h1>
+<h1 class="page-title"><span class="title-pill">{{ icon('shield') }} Family admin</span></h1>
 <div class="stats">
   {% for label, key in [('People','users'),('Admins','admins'),('Posts','posts'),('Comments','comments'),('Photos','photos')] %}
   <div class="card stat"><strong>{{ stats[key] }}</strong>{{ label }}</div>
   {% endfor %}
 </div>
-<section class="card">
+<section class="card" id="add-member">
+  <h2>Add a family member</h2>
+  <p class="hint">Choose their username and a starting password, then tell them. They'll set up their profile the first time they log in.</p>
+  <form method="post" action="{{ url_for('admin.add_member') }}#add-member" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="member-username">Username</label>
+      <input type="text" id="member-username" name="username" value="{{ add_form.username.data or '' }}" autocomplete="off" autocapitalize="none" required>
+      <p class="hint">3 to 30 letters, numbers or underscores.</p>
+      {{ field_errors(add_form.username) }}
+    </div>
+    <div class="field">
+      <label for="member-password">Starting password</label>
+      <input type="password" id="member-password" name="password" autocomplete="new-password" minlength="6" required>
+      <p class="hint">At least 6 characters.</p>
+      {{ field_errors(add_form.password) }}
+    </div>
+    <div class="field">
+      <label for="member-confirm">Type the password again</label>
+      <input type="password" id="member-confirm" name="confirm_password" autocomplete="new-password" required>
+      {{ field_errors(add_form.confirm_password) }}
+    </div>
+    <button type="submit" class="btn">Add member</button>
+  </form>
+</section>
+<section class="card" id="people">
   <h2>People</h2>
+  {% if shared_address %}
+  <p class="flash flash-info shared-warning" role="note">Everyone seems to be connecting from the same address ({{ shared_address }}). Login pauses then affect the whole family — see “Using your own domain and HTTPS” in the README and set FB_TRUSTED_PROXIES.</p>
+  {% endif %}
   <div class="table-wrap">
   <table class="admin">
-    <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col">Posts</th><th scope="col">Reset password</th><th scope="col">Actions</th></tr></thead>
+    <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Joined</th><th scope="col">Posts</th><th scope="col">Failed log-ins (7 days)</th><th scope="col">Reset password</th><th scope="col">Actions</th></tr></thead>
     <tbody>
     {% for row in rows %}
     <tr>
@@ -23,6 +51,16 @@
       <td data-label="Role">{% if row.user.is_admin %}<span class="badge badge-admin">Admin</span>{% else %}<span class="badge">Member</span>{% endif %}</td>
       <td data-label="Joined">{{ row.user.created_at|dateformat('%d %b %Y') }}</td>
       <td data-label="Posts">{{ row.post_count }}</td>
+      <td class="cell-logins" data-label="Failed log-ins (7 days)">{% if row.failed_logins %}<span class="badge badge-warn">{{ row.failed_logins }}</span>{% else %}0{% endif %}
+        {% if row.login_paused %} <span class="badge">Paused</span>{% endif %}
+        {% if row.can_clear_logins %}
+        <form method="post" action="{{ url_for('admin.clear_login_failures') }}" class="mt-s">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="username" value="{{ row.user.username }}">
+          <button type="submit" class="btn btn-secondary btn-small btn-compact" aria-label="Clear failed log-ins for {{ row.user.name }}">Clear failed log-ins</button>
+        </form>
+        {% endif %}
+      </td>
       <td class="cell-reset" data-label="Reset password">
         <form method="post" action="{{ url_for('admin.reset_password', user_id=row.user.id) }}" class="reset-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -40,8 +78,7 @@
           <form method="post" action="{{ url_for('admin.demote', user_id=row.user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-secondary btn-small">Remove admin</button></form>
           {% endif %}
           {% if row.can_delete %}
-          <form method="post" action="{{ url_for('admin.delete_user', user_id=row.user.id) }}" onsubmit="return confirm('Delete {{ row.user.name|e }} and ALL of their posts, comments and photos? This cannot be undone.')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-danger btn-small">{{ icon('trash') }} Delete</button></form>
+          <a href="{{ url_for('admin.delete_user', user_id=row.user.id) }}" class="btn btn-danger btn-small" aria-label="Delete {{ row.user.name }}">{{ icon('trash') }} Delete</a>
           {% endif %}
         </div>
       </td>
@@ -50,5 +87,37 @@
     </tbody>
   </table>
   </div>
+  <p class="hint">Failed log-ins are wrong passwords typed in the last 7 days. After 5 wrong tries in 15 minutes for one name on one device, that name has to wait 5 minutes on that device; the same person can still log in on another device. A device that gets 20 wrong tries in 15 minutes (any names) waits 15 minutes. "Clear failed log-ins" lifts the wait for that name straight away, and resetting someone's password does too; a paused device is unpaused separately below. Someone who has logged in on a device before can still log in there while their name is paused because of tries from another device at the same address.{% if stats.failed_logins_unknown %} There were also {{ stats.failed_logins_unknown }} tries with usernames that don't belong to anyone.{% endif %}</p>
+  {% if unknown_failures %}
+  <h3>Usernames that belong to nobody</h3>
+  <ul class="plain-list">
+    {% for item in unknown_failures %}
+    <li>
+      <form method="post" action="{{ url_for('admin.clear_login_failures') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="username" value="{{ item.username }}">
+        <span>“{{ item.username }}”: {{ item.count }} {{ 'try' if item.count == 1 else 'tries' }}{% if item.paused %} <span class="badge">Paused</span>{% endif %}</span>
+        <button type="submit" class="btn btn-secondary btn-small" aria-label="Clear failed log-ins for {{ item.username }}">Clear failed log-ins</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if paused_devices %}
+  <h3 id="paused-devices">Paused devices</h3>
+  <p class="hint">These addresses had too many wrong tries across different names. Unpausing a device does not clear pauses on particular names.</p>
+  <ul class="plain-list">
+    {% for device in paused_devices %}
+    <li>
+      <form method="post" action="{{ url_for('admin.unpause_device_route') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="ip" value="{{ device.ip }}">
+        <span>{{ device.ip }} <span class="badge">Paused</span></span>
+        <button type="submit" class="btn btn-secondary btn-small btn-compact" aria-label="Unpause the device at {{ device.ip }}">Unpause this device</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 {% endblock %}

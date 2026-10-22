@@ -3,7 +3,7 @@
 {% block title %}Welcome - Family Blogger{% endblock %}
 {% block container_class %}{% endblock %}
 {% block content %}
-<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">Welcome to the family!</span></h1>
+<h1 class="page-title"><span class="title-pill">Welcome to the family!</span></h1>
 <ol class="wizard-steps" aria-label="Steps">
   <li>1. About you</li><li>2. Avatar</li><li>3. Theme</li><li>4. Finish</li>
 </ol>
@@ -52,7 +52,6 @@
     <button type="button" class="btn btn-secondary" data-prev>Back</button>
     <button type="button" class="btn" data-next>Next</button>
   </div>
-  <div class="wizard-submit-nojs"></div>
 </form>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>{% endblock %}

@@ -4,7 +4,7 @@
 
 {% macro mood_badge(post) %}{% if post.mood_info %}<span class="badge mood-badge" title="Feeling {{ post.mood_info.label }}"><img src="{{ url_for('static', filename=post.mood_info.icon) }}" alt=""> {{ post.mood_info.label }}</span>{% endif %}{% endmacro %}
 
-{% macro visibility_badge(post) %}{% if post.visibility != 'everyone' %}{% set v = post.visibility_info %}<span class="badge vis-badge" title="{{ v.description }}"><span class="icon" aria-hidden="true" style="--ic:url('{{ url_for('static', filename=v.icon) }}')"></span> {{ v.label }}</span>{% endif %}{% endmacro %}
+{% macro visibility_badge(post) %}{% if post.visibility != 'everyone' %}{% set v = post.visibility_info %}<span class="badge vis-badge" title="{{ v.description }}"><span class="icon i-{{ v.icon|replace('img/icons/', '')|replace('.svg', '') }}" aria-hidden="true"></span> {{ v.label }}</span>{% endif %}{% endmacro %}
 
 {% macro field_errors(field) %}{% if field.errors %}<ul class="errors" role="alert">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}{% endmacro %}
 
@@ -12,4 +12,3 @@
    Every picker that shares the same `preview` id feeds one preview grid (see app.js). #}
 {% macro file_button(id, name, label, icon_name='upload', preview=None, multiple=False, capture=None, required=False, secondary=True) %}<input class="file-input" type="file" id="{{ id }}" name="{{ name }}" accept="image/*"{% if multiple %} multiple{% endif %}{% if capture %} capture="{{ capture }}"{% endif %}{% if required %} required{% endif %}{% if preview %} data-preview="{{ preview }}"{% endif %}><label class="btn btn-big file-btn{{ ' btn-secondary' if secondary }}" for="{{ id }}">{% if icon_name %}{{ icon(icon_name) }} {% endif %}{{ label }}</label>{% endmacro %}
 
-{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}

@@ -27,7 +27,7 @@ def serve(filename: str) -> Response:
     Returns:
         The image, marked as privately cacheable for an hour.
     """
-    if not FILENAME_RE.match(filename):
+    if not FILENAME_RE.fullmatch(filename):
         abort(404)
 
     photo = db.session.scalar(db.select(Photo).filter_by(filename=filename))
