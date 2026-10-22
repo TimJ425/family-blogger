@@ -5,8 +5,13 @@ from werkzeug.wrappers import Response
 
 from ..constants import DEFAULT_AVATARS
 from ..forms import OnboardingForm
-from ..models import db
-from ..utils.uploads import UploadError, delete_upload, has_file, save_image
+from ..utils.uploads import (
+    UploadError,
+    commit_with_files,
+    delete_upload,
+    has_file,
+    save_image,
+)
 from . import bp
 
 
@@ -51,6 +56,7 @@ def welcome() -> str | Response:
                 new_files.append(avatar_file)
             if has_file(form.background.data):
                 bg_file = save_image(form.background.data, "background")
+                new_files.append(bg_file)
             else:
                 bg_file = None
         except UploadError as exc:
@@ -66,18 +72,21 @@ def welcome() -> str | Response:
         user = current_user
         user.display_name = (form.display_name.data or "").strip() or None
         user.bio = (form.bio.data or "").strip() or None
+        old_files = []
         if avatar_file:
-            delete_upload(user.avatar if user.has_uploaded_avatar else None)
+            if user.has_uploaded_avatar:
+                old_files.append(user.avatar)
             user.avatar = avatar_file
         elif form.avatar.data in DEFAULT_AVATARS:
-            delete_upload(user.avatar if user.has_uploaded_avatar else None)
+            if user.has_uploaded_avatar:
+                old_files.append(user.avatar)
             user.avatar = form.avatar.data
         if bg_file:
-            delete_upload(user.background_image)
+            old_files.append(user.background_image)
             user.background_image = bg_file
         user.apply_theme(form.theme_preset.data, form.chosen_colours())
         user.onboarded = True
-        db.session.commit()
+        commit_with_files(new_files, old_files)
         flash(
             f"All set, {user.name}! "
             "Write your first diary entry whenever you like.",

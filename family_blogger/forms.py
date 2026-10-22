@@ -5,6 +5,7 @@ TEMPLATE_CONTRACT.md.
 """
 import re
 
+from flask_login import current_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
@@ -28,11 +29,20 @@ from wtforms.validators import (
     ValidationError,
 )
 
-from .constants import DEFAULT_AVATARS, MOODS, THEME_PRESETS, VISIBILITIES
-from .models import User
+from .constants import (
+    DEFAULT_AVATARS,
+    DEFAULT_PRESET,
+    MOODS,
+    THEME_COLOUR_KEYS,
+    THEME_PRESETS,
+    VISIBILITIES,
+)
+from .models import User, has_invisible_chars
 from .utils.uploads import ALLOWED_EXTENSIONS
 
 USERNAME_RE = r"^[A-Za-z0-9_]{3,30}$"
+NAME_IN_USE = "That name is already used by someone in the family."
+INVISIBLE_IN_NAME = "Please use only visible letters in your name."
 HEX_COLOUR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 IMAGE_ONLY = FileAllowed(
     sorted(ALLOWED_EXTENSIONS), "Images only (jpg, png, gif, webp).")
@@ -111,11 +121,31 @@ class ProfileFieldsMixin:
     avatar_upload = FileField(
         "Upload a photo", validators=[Optional(), IMAGE_ONLY])
 
+    def validate_display_name(self, field: StringField) -> None:
+        """Reject a display name that looks like another member's name.
+
+        The member's own username and display name are always fine.
+
+        Args:
+            field: The display name field being validated.
+
+        Raises:
+            ValidationError: If the name contains invisible
+                characters or another member uses that name.
+        """
+        if has_invisible_chars(field.data):
+            raise ValidationError(INVISIBLE_IN_NAME)
+        own_id = (current_user.id if current_user.is_authenticated
+                  else None)
+        if User.name_in_use(field.data, exclude_id=own_id):
+            raise ValidationError(NAME_IN_USE)
+
 
 class ThemeFieldsMixin:
     """Theme preset and custom colour fields shared by two forms."""
 
-    theme_preset = RadioField("Theme", choices=PRESET_CHOICES, default="sunny")
+    theme_preset = RadioField(
+        "Theme", choices=PRESET_CHOICES, default=DEFAULT_PRESET)
     # Unticked: the preset's colours are used. Ticked: the colour
     # fields below.
     custom_colours = BooleanField("Use my own colours")
@@ -136,7 +166,7 @@ class ThemeFieldsMixin:
         if not self.custom_colours.data:
             return None
         return {key: getattr(self, f"colour_{key}").data or None
-                for key in ("primary", "accent", "bg", "card", "text")}
+                for key in THEME_COLOUR_KEYS}
 
 
 class OnboardingForm(ProfileFieldsMixin, ThemeFieldsMixin, FlaskForm):
@@ -210,6 +240,30 @@ class CommentForm(FlaskForm):
 
 
 # --- admin ----------------------------------------------------------
+class AddMemberForm(SignupForm):
+    """Let an admin add a family member with a starting password.
+
+    Same username and password rules as ``SignupForm``. New members
+    are never admins; promotion is a separate action.
+    """
+
+    submit = SubmitField("Add member")
+
+    def validate_username(self, field: StringField) -> None:
+        """Reject a taken username or another member's display name.
+
+        Args:
+            field: The username field being validated.
+
+        Raises:
+            ValidationError: If the username is taken or looks like
+                someone's display name.
+        """
+        super().validate_username(field)
+        if User.name_in_use(field.data):
+            raise ValidationError(NAME_IN_USE)
+
+
 class AdminResetPasswordForm(FlaskForm):
     """Let an admin set a new password for another user."""
 
@@ -237,3 +291,17 @@ class SearchForm(FlaskForm):
     date_from = DateField("From", validators=[Optional()])
     date_to = DateField("To", validators=[Optional()])
     submit = SubmitField("Search")
+
+    def validate_date_to(self, field: object) -> None:
+        """Reject a date range that ends before it starts.
+
+        Args:
+            field: The ``date_to`` field.
+
+        Raises:
+            ValidationError: If "To" is earlier than "From".
+        """
+        start = self.date_from.data
+        if start and field.data and field.data < start:
+            raise ValidationError(
+                "The 'To' date can't be before the 'From' date.")

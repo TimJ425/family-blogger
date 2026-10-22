@@ -34,10 +34,25 @@
     });
   });
 
-  // Confirm on forms flagged with data-confirm
-  document.addEventListener('submit', function (e) {
-    var msg = e.target.getAttribute && e.target.getAttribute('data-confirm');
-    if (msg && !window.confirm(msg)) e.preventDefault();
+  // Delete links lead to a confirmation page. With JavaScript we ask
+  // in a dialog instead and post straight to the delete route.
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-confirm-post]');
+    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    if (!window.confirm(a.getAttribute('data-confirm-post'))) return;
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = a.pathname;
+    [['csrf_token', a.getAttribute('data-csrf')], ['confirm', 'yes'],
+     ['next', a.getAttribute('data-next')]].forEach(function (f) {
+      if (!f[1]) return;
+      var i = document.createElement('input');
+      i.type = 'hidden'; i.name = f[0]; i.value = f[1];
+      form.appendChild(i);
+    });
+    document.body.appendChild(form);
+    form.submit();
   });
 
   // Image previews for file inputs with data-preview="<container id>".

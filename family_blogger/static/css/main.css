@@ -8,6 +8,13 @@
   --fb-soft-accent: color-mix(in srgb, var(--fb-accent) 14%, var(--fb-card));
   --fb-on-primary: #fff;
   --fb-danger: #c0392b;
+  --fb-success: #2e9e5b;
+  /* Mood colours are deliberately FIXED and never themed: a mood must
+     mean the same thing (green is great, red is grumpy) in every
+     palette, or the heatmap and chart would stop being readable. */
+  --fb-mood-great: #2e9e5b; --fb-mood-good: #8bc34a;
+  --fb-mood-okay: #f2c200; --fb-mood-sad: #4a90d9;
+  --fb-mood-grumpy: #d9534f;
   --fb-radius: 20px;
   --fb-shadow: 0 6px 24px color-mix(in srgb, var(--fb-text) 14%, transparent);
   --tabbar-h: 60px;
@@ -68,7 +75,6 @@ main { flex: 1; padding: 24px 0 48px; }
 .page-title { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .page-title h1, .page-title > span { overflow-wrap: anywhere; }
 .page-title h1 { margin: 0; background: color-mix(in srgb, var(--fb-card) 80%, transparent); padding: .1em .6em; border-radius: 999px; }
-.stack > * + * { margin-top: 1rem; }
 
 /* Header / nav: top nav on tablets and desktop, bottom tab bar on phones */
 .site-header { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--fb-card) 88%, transparent);
@@ -151,12 +157,11 @@ main { flex: 1; padding: 24px 0 48px; }
 .btn-secondary { background: var(--fb-card); color: var(--fb-text); border-color: var(--fb-border); }
 .btn-secondary:hover { background: var(--fb-soft); color: var(--fb-text); }
 .btn-danger { background: var(--fb-card); color: var(--fb-danger); border-color: var(--fb-danger); }
-.btn-danger:hover { background: var(--fb-danger); color: #fff; }
+.btn-danger:hover { background: var(--fb-danger); color: var(--fb-on-primary); }
 .btn-small { min-height: 44px; padding: 0 16px; font-size: .92rem; }
 .btn-big { min-height: 58px; font-size: 1.15rem; padding: 0 32px; }
 .btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .btn-row form { margin: 0; }
-.btn-block { width: 100%; }
 .file-input { position: absolute; opacity: 0; width: 1px; height: 1px; overflow: hidden; }
 .file-input:focus-visible + .file-btn { outline: 3px solid var(--fb-accent); outline-offset: 3px; }
 .file-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
@@ -178,13 +183,11 @@ input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--fb-primary
 .errors { list-style: none; margin: .4rem 0 0; padding: 0; color: var(--fb-danger); font-weight: 700; font-size: .95rem; }
 fieldset { border: 0; padding: 0; margin: 0 0 1.2rem; min-width: 0; }
 legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
-.form-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); }
-.inline-form { display: inline; margin: 0; }
 
 /* Flash */
 .flashes { list-style: none; padding: 0; margin: 0 0 20px; }
 .flash { padding: 14px 18px; border-radius: 16px; margin-bottom: 10px; font-weight: 700; border: 2px solid; background: var(--fb-card); }
-.flash-success { border-color: #2e9e5b; background: color-mix(in srgb, #2e9e5b 14%, var(--fb-card)); }
+.flash-success { border-color: var(--fb-success); background: color-mix(in srgb, var(--fb-success) 14%, var(--fb-card)); }
 .flash-error { border-color: var(--fb-danger); background: color-mix(in srgb, var(--fb-danger) 12%, var(--fb-card)); }
 .flash-info { border-color: var(--fb-accent); background: var(--fb-soft-accent); }
 
@@ -213,7 +216,7 @@ legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
 .avatar-lg { width: 96px; height: 96px; } .avatar-xl { width: 128px; height: 128px; }
 .badge { display: inline-flex; align-items: center; gap: .35em; padding: 2px 12px; border-radius: 999px; font-size: .85rem; font-weight: 800; background: var(--fb-soft); border: 1px solid var(--fb-border); white-space: nowrap; }
 .badge .icon { width: 1em; height: 1em; }
-.badge-admin { background: var(--fb-accent); color: #fff; border-color: transparent; }
+.badge-admin { background: var(--fb-accent); color: var(--fb-on-primary); border-color: transparent; }
 .mood-badge img { width: 24px; height: 24px; }
 
 /* Post card */
@@ -231,7 +234,6 @@ legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
 .post-body pre, .post-body code { background: var(--fb-soft); border-radius: 8px; padding: .1em .4em; font-size: .92em; }
 .post-body pre { padding: .8em 1em; overflow-x: auto; }
 .post-body hr { border: 0; border-top: 2px dashed var(--fb-border); }
-.post-body.clamped { max-height: 9em; overflow: hidden; position: relative; }
 .photo-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(150px, 45%), 1fr)); margin: 14px 0; }
 .photo-grid a { display: block; border-radius: 14px; overflow: hidden; aspect-ratio: 4/3; background: var(--fb-soft); }
 .photo-grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s; }
@@ -306,7 +308,7 @@ legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
 .swatch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 45%), 1fr)); gap: 10px; }
 .swatch-option { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 12px; border: 3px solid var(--fb-border); border-radius: 18px; background: var(--fb-card); cursor: pointer; margin: 0; font-weight: 800; }
 .swatches { display: flex; }
-.swatches i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; margin-left: -6px; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.swatches i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--fb-on-primary); margin-left: -6px; box-shadow: 0 1px 4px color-mix(in srgb, var(--fb-text) 30%, transparent); }
 .swatches i:first-child { margin-left: 0; }
 .colour-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 12px; }
 .colour-field { display: flex; align-items: center; gap: 10px; }
@@ -324,8 +326,6 @@ legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
 .wizard-nav { display: none; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .js .wizard-nav { display: flex; }
 .wizard-finish { display: block; }
-.js .wizard-submit-nojs { display: none; }
-.wizard-submit-nojs { margin-top: 20px; }
 
 /* Profile */
 .profile-head { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
@@ -334,8 +334,8 @@ legend { font-weight: 800; padding: 0; margin-bottom: .5rem; }
 .bio { white-space: pre-line; overflow-wrap: anywhere; }
 .heatmap { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; max-width: 460px; }
 .heat { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--fb-border); background: color-mix(in srgb, var(--fb-text) 8%, var(--fb-card)); }
-.heat-great { background: #2e9e5b; } .heat-good { background: #8bc34a; } .heat-okay { background: #f2c200; }
-.heat-sad { background: #4a90d9; } .heat-grumpy { background: #d9534f; }
+.heat-great { background: var(--fb-mood-great); } .heat-good { background: var(--fb-mood-good); } .heat-okay { background: var(--fb-mood-okay); }
+.heat-sad { background: var(--fb-mood-sad); } .heat-grumpy { background: var(--fb-mood-grumpy); }
 .heat-none { background: color-mix(in srgb, var(--fb-text) 8%, var(--fb-card)); }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: .88rem; font-weight: 700; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -358,7 +358,18 @@ table.admin th, table.admin td { padding: 12px 10px; text-align: left; border-bo
 .admin-user { display: flex; align-items: center; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
 .admin-user > div { min-width: 0; }
 .reset-form { display: flex; gap: 6px; align-items: center; }
-.reset-form input { min-height: 44px; width: 150px; }
+/* Small admin buttons stay on one line instead of wrapping. */
+.btn-compact { padding: 0 12px; font-size: .85rem; white-space: nowrap; }
+table.admin td.cell-logins { min-width: 10rem; }
+table.admin td[data-label="Joined"], table.admin .admin-user .small {
+  white-space: nowrap;
+}
+table.admin td.cell-actions .btn {
+  padding: 0 12px; font-size: .85rem; white-space: nowrap;
+}
+table.admin td.cell-logins form { margin: 0; }
+.shared-warning { font-weight: 600; }
+.reset-form input { min-height: 44px; width: 8.5rem; }
 
 /* Search */
 .search-form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); align-items: end; }
@@ -378,6 +389,7 @@ table.admin th, table.admin td { padding: 12px 10px; text-align: left; border-bo
   table.admin td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 0; text-align: right; min-width: 0; }
   table.admin td[data-label]::before { content: attr(data-label); font-weight: 800; color: var(--fb-muted); text-align: left; flex: none; }
   table.admin td.cell-person { justify-content: flex-start; text-align: left; padding-top: 0; }
+  table.admin td.cell-logins { min-width: 0; flex-wrap: wrap; }
   table.admin td.cell-reset, table.admin td.cell-actions { display: block; text-align: left; }
   table.admin td.cell-reset::before { display: block; margin-bottom: 6px; }
   .reset-form { flex-direction: column; align-items: stretch; }
@@ -416,3 +428,34 @@ table.admin th, table.admin td { padding: 12px 10px; text-align: left; border-bo
   h1 { font-size: 1.7rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .ptr.is-loading .ptr-spinner { animation: none; } }
+
+/* Self-hosted Nunito (variable font, weights 400-900). Licence:
+   fonts/OFL.txt. No requests leave the family's network. */
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url("../fonts/nunito-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url("../fonts/nunito-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Replacements for the old inline style="" attributes, which the
+   Content-Security-Policy now blocks. !important keeps the inline
+   precedence they used to have. */
+.title-pill { background: color-mix(in srgb, var(--fb-card) 80%, transparent); padding: .1em .6em; border-radius: 999px; }
+.m-0 { margin: 0 !important; }
+.mt-xs { margin-top: .6rem !important; }
+.mt-s { margin-top: 12px !important; }
+.mt-m { margin-top: 1rem !important; }
+.mt-l { margin-top: 1.2rem !important; }
+.mt-xl { margin-top: 1.4rem !important; }
+.emoji-xl { font-size: 2rem; }
+.bg-preview { background-image: var(--fb-bg-image); }
+.badge-warn { border-color: var(--fb-accent); }
+.plain-list { list-style: none; margin: .4rem 0 0; padding: 0; }
+.plain-list li { margin: 0 0 8px; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0; }
+.inline-form span { overflow-wrap: anywhere; }

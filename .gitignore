@@ -7,6 +7,7 @@ data/
 deploy/data/
 backups/
 deploy/backups/
+graphify-out/
 
 # Environment files (keep the example)
 .env
@@ -23,3 +24,9 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
+
+# Restore / migration safety copies (contain personal data)
+data.before-restore-*/
+deploy/data.before-restore-*/
+**/data.before-restore-*/
+*.pre-migration-*.db

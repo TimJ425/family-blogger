@@ -1,4 +1,6 @@
 """Home feed, post CRUD, comments and reactions."""
+from urllib.parse import urlsplit
+
 from flask import (
     abort,
     current_app,
@@ -10,19 +12,31 @@ from flask import (
     url_for,
 )
 from flask_login import current_user
+from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 
 from ..constants import REACTIONS
 from ..forms import CommentForm, PostForm
 from ..models import Comment, Photo, Post, Reaction, db, now
-from ..utils import flash_form_errors, redirect_back
+from ..utils import (
+    flash_form_errors,
+    is_safe_url,
+    last_page_redirect,
+    redirect_back,
+)
 from ..utils.permissions import can_view, feed_query, get_viewable_post_or_404
-from ..utils.uploads import UploadError, delete_upload, has_file, save_image
+from ..utils.uploads import (
+    UploadError,
+    commit_with_files,
+    delete_upload,
+    has_file,
+    save_image,
+)
 from . import bp
 
 
 @bp.route("/")
-def feed() -> str:
+def feed() -> str | Response:
     """Show the home feed, newest first, one page at a time.
 
     For signed-in users. Only posts the user may see are listed. The
@@ -38,6 +52,9 @@ def feed() -> str:
         per_page=current_app.config["POSTS_PER_PAGE"],
         error_out=False,
     )
+    last_page = last_page_redirect(pagination)
+    if last_page:
+        return last_page
     return render_template(
         "posts/feed.html",
         pagination=pagination,
@@ -60,6 +77,9 @@ def _save_photos(files: object, existing_count: int = 0) -> list[str]:
     Raises:
         UploadError: If the post would exceed the photo limit, or an
             image is rejected.
+        OSError: If a file cannot be written (e.g. the disk is
+            full). Any other error is re-raised too; in every case
+            the photos already saved by this call are deleted first.
     """
     files = [f for f in files or [] if has_file(f)]
     limit = current_app.config["MAX_PHOTOS_PER_POST"]
@@ -69,7 +89,9 @@ def _save_photos(files: object, existing_count: int = 0) -> list[str]:
     try:
         for f in files:
             saved.append(save_image(f, "post"))
-    except UploadError:
+    except BaseException:
+        # Whatever went wrong (a rejected image, a full disk, ...),
+        # don't leave orphaned files behind.
         for name in saved:
             delete_upload(name)
         raise
@@ -102,7 +124,7 @@ def new_post() -> str | Response:
             )
             post.photos = [Photo(filename=name) for name in filenames]
             db.session.add(post)
-            db.session.commit()
+            commit_with_files(filenames, [])
             flash("Your diary entry is posted!", "success")
             return redirect(post.url)
     return render_template("posts/form.html", form=form, post=None)
@@ -170,50 +192,85 @@ def edit_post(post_id: int) -> str | Response:
             post.mood = form.mood.data or None
             post.visibility = form.visibility.data
             post.updated_at = now()
+            removed = [photo.filename for photo in to_remove]
             for photo in to_remove:
                 post.photos.remove(photo)
             post.photos.extend(Photo(filename=name) for name in filenames)
-            db.session.commit()
-            for photo in to_remove:
-                delete_upload(photo.filename)
+            commit_with_files(filenames, removed)
             flash("Post updated.", "success")
             return redirect(post.url)
     return render_template("posts/form.html", form=form, post=post)
 
 
-@bp.route("/post/<int:post_id>/delete", methods=["POST"])
-def delete_post(post_id: int) -> Response:
-    """Delete a post and its photo files.
+def _post_return_url(post_id: int, target: str | None) -> str | None:
+    """Pick a safe place to go back to after leaving a post's delete.
 
-    POST only. Allowed for users who may delete the post (403
-    otherwise). It redirects to a safe local ``next`` URL from the
-    form, unless that points at the deleted post, else to the feed.
+    Args:
+        post_id: The id of the post being deleted.
+        target: The requested ``next`` value, possibly empty.
+
+    Returns:
+        The target when it is a safe local URL that does not point at
+        the post or one of its sub-pages, else ``None``.
+    """
+    if not is_safe_url(target):
+        return None
+    path = urlsplit(target).path
+    own = f"/post/{post_id}"
+    if path == own or path.startswith(own + "/"):
+        return None
+    return target
+
+
+@bp.route("/post/<int:post_id>/delete", methods=["GET", "POST"])
+def delete_post(post_id: int) -> Response | str:
+    """Ask for confirmation, then delete a post and its photo files.
+
+    GET shows the "Are you sure?" page. POST deletes only when the
+    form carries ``confirm=yes``; otherwise nothing is deleted and
+    the user is sent to the confirmation page. A 404 if the post is
+    not visible and a 403 if the user may not delete it. It redirects
+    to a safe local ``next`` URL, unless that points at the deleted
+    post, else to the feed.
 
     Args:
         post_id: The id of the post.
 
     Returns:
-        A redirect.
+        The confirmation page or a redirect.
     """
     post = get_viewable_post_or_404(post_id)
     if not post.can_delete(current_user):
         abort(403)
+    raw_next = request.values.get("next")
+    target = _post_return_url(post_id, raw_next)
+    if request.method == "GET" or request.form.get("confirm") != "yes":
+        if request.method == "POST":
+            flash("Please confirm before deleting.", "error")
+            return redirect(
+                url_for("posts.delete_post", post_id=post_id, next=target)
+            )
+        return render_template(
+            "confirm_delete.html",
+            heading="Delete this post?",
+            message=(
+                f"\u201c{post.title}\u201d and its photos and "
+                "comments will be gone for good."
+            ),
+            action_url=url_for("posts.delete_post", post_id=post_id),
+            cancel_url=target or post.url,
+            next_url=target,
+            confirm_label="Yes, delete the post",
+            require_text=None,
+            error=None,
+        )
     filenames = [p.filename for p in post.photos]
     db.session.delete(post)
     db.session.commit()
     for name in filenames:
         delete_upload(name)
     flash("Post deleted.", "success")
-    # Never bounce back to the (now missing) permalink.
-    target = request.form.get("next")
-    if (
-        target
-        and target.startswith("/")
-        and not target.startswith("//")
-        and not target.startswith(f"/post/{post_id}")
-    ):
-        return redirect(target)
-    return redirect(url_for("posts.feed"))
+    return redirect(target or url_for("posts.feed"))
 
 
 @bp.route("/post/<int:post_id>/comment", methods=["POST"])
@@ -243,18 +300,22 @@ def add_comment(post_id: int) -> Response:
     )
 
 
-@bp.route("/comment/<int:comment_id>/delete", methods=["POST"])
-def delete_comment(comment_id: int) -> Response:
-    """Delete a comment.
+@bp.route("/comment/<int:comment_id>/delete", methods=["GET", "POST"])
+def delete_comment(comment_id: int) -> Response | str:
+    """Ask for confirmation, then delete a comment.
 
-    POST only. A 404 if the comment's post is not visible to the
-    user, and a 403 if the user may not delete the comment.
+    GET shows the "Are you sure?" page. POST deletes only when the
+    form carries ``confirm=yes``; otherwise nothing is deleted and
+    the user is sent to the confirmation page. A 404 if the comment's
+    post is not visible to the user, and a 403 if the user may not
+    delete the comment.
 
     Args:
         comment_id: The id of the comment.
 
     Returns:
-        A redirect to the comments section of its post.
+        The confirmation page or a redirect to the comments section
+        of its post.
     """
     comment = db.session.get(Comment, comment_id)
     if comment is None or not can_view(comment.post, current_user):
@@ -262,12 +323,28 @@ def delete_comment(comment_id: int) -> Response:
     if not comment.can_delete(current_user):
         abort(403)
     post_id = comment.post_id
+    back = url_for("posts.view_post", post_id=post_id, _anchor="comments")
+    if request.method == "GET":
+        return render_template(
+            "confirm_delete.html",
+            heading="Delete this comment?",
+            message=f"\u201c{comment.body}\u201d will be gone for good.",
+            action_url=url_for("posts.delete_comment", comment_id=comment_id),
+            cancel_url=back,
+            next_url=None,
+            confirm_label="Yes, delete the comment",
+            require_text=None,
+            error=None,
+        )
+    if request.form.get("confirm") != "yes":
+        flash("Please confirm before deleting.", "error")
+        return redirect(
+            url_for("posts.delete_comment", comment_id=comment_id)
+        )
     db.session.delete(comment)
     db.session.commit()
     flash("Comment deleted.", "success")
-    return redirect(
-        url_for("posts.view_post", post_id=post_id, _anchor="comments")
-    )
+    return redirect(back)
 
 
 @bp.route("/post/<int:post_id>/react/<kind>", methods=["POST"])
@@ -299,7 +376,13 @@ def react(post_id: int, kind: str) -> Response:
     else:
         db.session.add(Reaction(post=post, user=current_user, kind=kind))
         reacted = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # A double-tap raced us to the unique reaction: it is already
+        # there, so treat this tap as "reacted" rather than failing.
+        db.session.rollback()
+        reacted = True
 
     wants_json = (
         request.accept_mimetypes.best == "application/json"

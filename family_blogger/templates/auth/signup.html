@@ -6,6 +6,7 @@
 <div class="card auth-card">
   <img class="brand-big" src="{{ url_for('static', filename='img/logo/logo.svg') }}" alt="Family Blogger">
   <h1>Join the family</h1>
+  <p class="hint">You're the first one here, so you'll be the family admin. You can add everyone else afterwards.</p>
   <form method="post" action="{{ url_for('auth.signup') }}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
@@ -27,6 +28,6 @@
     </div>
     <button type="submit" class="btn btn-big">Create my account</button>
   </form>
-  <p style="margin-top:1rem">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+  <p class="mt-m">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
 </div>
 {% endblock %}

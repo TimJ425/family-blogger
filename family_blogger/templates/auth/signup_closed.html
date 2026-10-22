@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Ask a grown-up - Family Blogger{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <img class="brand-big" src="{{ url_for('static', filename='img/logo/logo.svg') }}" alt="Family Blogger">
+  <h1>Ask a grown-up to add you</h1>
+  <p>This family diary already has members. Ask a grown-up in your family to add you, and they'll tell you your username and password.</p>
+  <p class="mt-m">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from family_blogger import create_app  # noqa: E402
 from family_blogger.constants import THEME_PRESETS  # noqa: E402
 from family_blogger.models import Post, User, db, now  # noqa: E402
+from helpers import join_family  # noqa: E402
 
 SCR = tempfile.mkdtemp(prefix="fb-test-")
 atexit.register(shutil.rmtree, SCR, ignore_errors=True)
@@ -170,15 +171,7 @@ with app.app_context():
 t = c.get("/").get_data(as_text=True)
 check("diary-fab" not in t, "diary button hidden after posting today")
 # a private post counts, and another user is unaffected
-c2 = app.test_client()
-c2.post(
-    "/signup",
-    data={
-        "username": "dad",
-        "password": "secret1",
-        "confirm_password": "secret1",
-    },
-)
+c2 = join_family(app, "dad")
 c2.post(
     "/welcome",
     data={"display_name": "Dad", "avatar": "owl", "theme_preset": "sunny"},

@@ -24,7 +24,11 @@
     </div>
     <button type="submit" class="btn btn-big">Log in</button>
   </form>
-  <p class="hint" style="margin-top:1rem">Forgot your password? Ask a family admin to reset it.</p>
-  <p>New here? <a href="{{ url_for('auth.signup') }}">Create an account</a></p>
+  <p class="hint mt-m">Forgot your password? Ask a family admin to reset it.</p>
+  {% if signup_open %}
+  <p>Setting up for the first time? <a href="{{ url_for('auth.signup') }}">Create the first account</a></p>
+  {% else %}
+  <p class="hint">New here? Ask a grown-up in your family to add you.</p>
+  {% endif %}
 </div>
 {% endblock %}

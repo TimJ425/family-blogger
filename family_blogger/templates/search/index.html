@@ -2,7 +2,7 @@
 {% from 'macros.html' import icon, field_errors %}
 {% block title %}Search - Family Blogger{% endblock %}
 {% block content %}
-<h1 class="page-title"><span style="background:color-mix(in srgb,var(--fb-card) 80%,transparent);padding:.1em .6em;border-radius:999px">{{ icon('search') }} Search</span></h1>
+<h1 class="page-title"><span class="title-pill">{{ icon('search') }} Search</span></h1>
 <form method="get" action="{{ url_for('search.search') }}" class="card search-form">
   <div class="field">
     <label for="q">Words</label>
@@ -36,6 +36,8 @@
 
 {% if not searched %}
   <p class="card muted">Type something above, or pick an author, mood or dates, then press Search.</p>
+{% elif pagination is none %}
+  {# Invalid filters: the errors are shown on the fields above. #}
 {% elif not posts %}
   <div class="card empty"><h2>No posts found</h2><p>Try different words or fewer filters.</p></div>
 {% else %}

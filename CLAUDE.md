@@ -61,6 +61,7 @@ The full rules, with examples, are in [CONTRIBUTING.md](CONTRIBUTING.md). They a
 
 - Colours only come from the `--fb-*` CSS variables, because users choose their own palettes.
 - JavaScript is vanilla, with no build step.
+- Strict Content-Security-Policy: no inline `<script>` code, `on*=` handlers or `style=""` attributes in templates; put code in `static/js/` and pass data with `data-*`.
 - Every form works without JavaScript, and every POST carries a CSRF token.
 - Design mobile-first and keep it accessible: labels, alt text, focus states and tap targets of at least 44px.
 - When routes or template context change, update `TEMPLATE_CONTRACT.md` to match.

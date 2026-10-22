@@ -9,8 +9,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SUITES = [
     "test_backend.py",
+    "test_migrations.py",
     "test_frontend.py",
     "test_mobile.py",
+    "test_confirmations.py",
+    "test_accounts.py",
+    "test_security.py",
+    "test_bugfixes.py",
+    "test_review_fixes.py",
+    "test_final_fixes.py",
     "test_conventions.py",
 ]
 

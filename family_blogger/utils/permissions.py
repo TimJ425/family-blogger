@@ -8,6 +8,7 @@ from functools import wraps
 from flask import abort
 from flask_login import current_user
 from sqlalchemy import ColumnElement, Select, or_, true
+from sqlalchemy.orm import joinedload, selectinload
 
 from ..models import Post, User, db
 
@@ -49,29 +50,53 @@ def visible_clause(user: User) -> ColumnElement:
         Post.visibility.in_(FAMILY_VISIBLE), Post.author_id == user.id)
 
 
+def with_card_data(stmt: Select) -> Select:
+    """Eager-load what a post card shows, to avoid N+1 queries.
+
+    Args:
+        stmt: A select of ``Post`` rows.
+
+    Returns:
+        The statement with the author, photos and reactions loaded
+        up front. The comment count is a column on ``Post``.
+    """
+    return stmt.options(
+        joinedload(Post.author),
+        selectinload(Post.photos),
+        selectinload(Post.reactions),
+    )
+
+
 def feed_query() -> Select:
     """Build the home feed query.
 
     Returns:
         A select of only "everyone" posts from all users, newest first.
     """
-    return (db.select(Post)
-            .where(Post.visibility == "everyone")
-            .order_by(Post.created_at.desc(), Post.id.desc()))
+    return with_card_data(
+        db.select(Post)
+        .where(Post.visibility == "everyone")
+        .order_by(Post.created_at.desc(), Post.id.desc()))
 
 
-def profile_query(profile_user: User, viewer: User) -> Select:
+def profile_query(
+    profile_user: User, viewer: User, eager: bool = True
+) -> Select:
     """Build the query for a user's posts as seen by a viewer.
 
     Args:
         profile_user: The user whose profile is being viewed.
         viewer: The signed-in user looking at the profile.
+        eager: Load card data up front; pass ``False`` when only
+            columns of ``Post`` itself are needed.
 
     Returns:
         A select of the "everyone" and "profile" posts, plus private
         ones when the viewer is the owner or an admin, newest first.
     """
     stmt = db.select(Post).where(Post.author_id == profile_user.id)
+    if eager:
+        stmt = with_card_data(stmt)
     if not (viewer.id == profile_user.id or viewer.is_admin):
         stmt = stmt.where(Post.visibility.in_(FAMILY_VISIBLE))
     return stmt.order_by(Post.created_at.desc(), Post.id.desc())

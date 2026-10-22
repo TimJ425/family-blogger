@@ -2,7 +2,7 @@
 # just this file (saved as compose.yaml), a .env and a data/ folder.
 services:
   family-blogger:
-    image: ghcr.io/timj425/family-blogger:${FB_TAG:-latest}
+    image: ghcr.io/timj425/family-blogger:${FB_TAG:-1.0}
     container_name: family-blogger
     restart: unless-stopped
     # Runs as a normal user; ./data must exist and be owned by this UID:GID.
@@ -10,10 +10,20 @@ services:
     ports:
       # Direct LAN access at http://<server-ip>:8765, and the target for a
       # reverse proxy such as Nginx Proxy Manager
-      - "${FB_PORT:-8765}:8765"
+      # FB_BIND=127.0.0.1 keeps the port off the LAN (required with
+      # FB_TRUST_PROXY=1, or a LAN device could forge X-Forwarded-For).
+      # With FB_TRUSTED_PROXIES the port may stay on the LAN.
+      - "${FB_BIND:-0.0.0.0}:${FB_PORT:-8765}:8765"
     volumes:
       - ./data:/data
     environment:
       TZ: ${TZ:-Europe/London}
-      # Trust X-Forwarded-* from the reverse proxy so HTTPS links work
-      FB_TRUST_PROXY: "1"
+      # Trust X-Forwarded-* headers only when behind a reverse proxy
+      # such as Nginx Proxy Manager (set FB_TRUST_PROXY=1 in .env). Leave
+      # at 0 for direct LAN access, or clients could spoof their address.
+      FB_TRUST_PROXY: "${FB_TRUST_PROXY:-0}"
+      # Comma-separated IPs/CIDRs of reverse proxies whose
+      # X-Forwarded-For is trusted. Empty = trust no one.
+      FB_TRUSTED_PROXIES: "${FB_TRUSTED_PROXIES:-}"
+      # Set FB_COOKIE_SECURE=1 in .env when the site is served over HTTPS
+      FB_COOKIE_SECURE: "${FB_COOKIE_SECURE:-0}"

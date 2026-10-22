@@ -1,0 +1,8 @@
+{# edit and delete buttons; expects post, optional delete_next #}
+{% from 'macros.html' import icon %}
+  {% if post.can_edit(current_user) or post.can_delete(current_user) %}
+  <div class="post-actions mt-s">
+    {% if post.can_edit(current_user) %}<a class="btn btn-secondary btn-small" href="{{ url_for('posts.edit_post', post_id=post.id) }}">{{ icon('edit') }} Edit</a>{% endif %}
+    {% if post.can_delete(current_user) %}{% include 'partials/delete_post_form.html' %}{% endif %}
+  </div>
+  {% endif %}

@@ -18,7 +18,7 @@ Then open http://localhost:8765. To try it on a phone, use `http://<your-compute
 
 - Without `--dev`, `run.py` uses the production server (waitress), the same one the Docker image runs. To change where it listens, use `--host` and `--port`. Never use `--dev` for real family use.
 - Local data (the database, uploads and secret key) lives in `instance/`, which is git-ignored. Delete that folder to start fresh. Set `FB_INSTANCE_DIR` to keep the data somewhere else.
-- `FB_TRUST_PROXY=1` makes the app trust `X-Forwarded-*` headers. The Docker setup turns this on for use behind a reverse proxy.
+- `FB_TRUSTED_PROXIES` (comma-separated IP addresses or CIDR networks, empty by default) lists the reverse proxies whose `X-Forwarded-*` headers are believed; requests from anywhere else have those headers ignored. Log-in pauses rely on it to tell devices apart behind a proxy. The legacy `FB_TRUST_PROXY=1` still works but believes any direct peer, so prefer `FB_TRUSTED_PROXIES`.
 - To build and run the Docker image locally:
 
   ```bash
@@ -125,6 +125,7 @@ These rules are checked automatically. `flake8` (configured in `.flake8`) covers
 ## Front-end rules
 
 - **Colours:** use only the `--fb-*` CSS custom properties, because each user chooses their own palette. Never hard-code a colour in a template.
+- **Content-Security-Policy:** every response carries a strict CSP, so templates must not contain inline `<script>` code (data goes in `data-*` attributes or `<script type="application/json">`), `on*=` event handlers or `style=""` attributes. Put code in `static/js/` and styles in `main.css`. The only `<style>` is the theme block in `base.html`, which carries the request's nonce. Fonts and libraries are self-hosted; never link to an outside host. `tests/test_security.py` checks this.
 - **JavaScript:** vanilla JS only, with no build step and no frameworks.
 - **Forms:** every form must still work without JavaScript and include `csrf_token`. Any action that changes data must be a POST.
 - **Mobile and accessibility:** design mobile-first, give every input a `<label>`, give images `alt` text, keep focus states visible and make tap targets at least 44px.

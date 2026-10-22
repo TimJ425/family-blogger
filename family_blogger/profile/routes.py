@@ -8,6 +8,7 @@ from werkzeug.wrappers import Response
 
 from ..constants import MOODS
 from ..models import Post, User, db
+from ..utils import last_page_redirect
 from ..utils.permissions import FAMILY_VISIBLE, profile_query
 from . import bp
 
@@ -48,7 +49,7 @@ def daily_moods(
     """
     start = datetime.combine(date.today() - timedelta(days=days - 1), time.min)
     stmt = (
-        profile_query(profile_user, viewer)
+        profile_query(profile_user, viewer, eager=False)
         .where(Post.mood.is_not(None), Post.created_at >= start)
         .order_by(None)
         .order_by(Post.created_at.asc(), Post.id.asc())
@@ -61,7 +62,7 @@ def daily_moods(
 
 
 @bp.route("/u/<username>")
-def view_profile(username: str) -> str:
+def view_profile(username: str) -> str | Response:
     """Show a member's profile, mood calendar and visible posts.
 
     For signed-in users. Only posts the viewer may see are listed. A
@@ -81,6 +82,9 @@ def view_profile(username: str) -> str:
         per_page=current_app.config["POSTS_PER_PAGE"],
         error_out=False,
     )
+    last_page = last_page_redirect(pagination)
+    if last_page:
+        return last_page
 
     moods = daily_moods(user, current_user, 30)
     today = date.today()

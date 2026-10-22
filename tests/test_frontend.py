@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # The project imports must stay below sys.path.insert (E402).
 from family_blogger import create_app  # noqa: E402
 from family_blogger.models import Post  # noqa: E402
+from helpers import join_family  # noqa: E402
 
 SCR = tempfile.mkdtemp(prefix="fb-test-")
 atexit.register(shutil.rmtree, SCR, ignore_errors=True)
@@ -203,15 +204,7 @@ page(c, "/u/mum?page=2", contains=["u/mum?page=1"])
 page(c, "/search?q=bulk&page=2", contains=["q=bulk"])
 page(c, "/admin", contains=["reset-password", "Family admin"])
 # second user
-c2 = app.test_client()
-c2.post(
-    "/signup",
-    data={
-        "username": "kid",
-        "password": "secret1",
-        "confirm_password": "secret1",
-    },
-)
+c2 = join_family(app, "kid")
 c2.post(
     "/welcome",
     data={
@@ -229,7 +222,7 @@ page(c2, f"/post/{ids['private']}", 404)
 page(c, "/admin", contains=["promote", "delete"])
 page(c, "/nonexistent", 404, contains=["Take me home"])
 page(c2, f"/post/{ids['everyone']}", contains=["react/heart"])
-r = c.post(f"/post/{ids['private']}/delete")
+r = c.post(f"/post/{ids['private']}/delete", data={"confirm": "yes"})
 check(r.status_code == 302, "delete post")
 r = c.post("/logout")
 check(r.status_code == 302, "logout")

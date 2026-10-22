@@ -7,7 +7,8 @@
   if (picker) {
     var presets = {};
     try { presets = JSON.parse(picker.getAttribute('data-presets') || '{}'); } catch (e) {}
-    var names = ['primary', 'accent', 'bg', 'card', 'text'];
+    var names = (picker.getAttribute('data-colour-keys') || '')
+      .split(' ').filter(Boolean);
     var inputs = {};
     names.forEach(function (n) { inputs[n] = picker.querySelector('#colour_' + n); });
     var custom = picker.querySelector('#custom_colours');
@@ -73,6 +74,16 @@
     }
     prev.addEventListener('click', function () { show(i - 1); });
     next.addEventListener('click', function () { show(i + 1); });
+    // Enter in a text field moves to the next step instead of
+    // submitting the whole form. Without JavaScript this handler does
+    // not exist, so the single-form fallback submits as usual.
+    wiz.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (e.key !== 'Enter' || !t || t.tagName !== 'INPUT') return;
+      if (t.type === 'submit' || t.type === 'button' || t.type === 'file') return;
+      e.preventDefault();
+      if (i < steps.length - 1) show(i + 1);
+    });
     // If a field error exists, jump to the step containing it
     var errStep = steps.findIndex(function (s) { return s.querySelector('.errors'); });
     show(errStep > -1 ? errStep : 0);

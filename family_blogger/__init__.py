@@ -1,26 +1,44 @@
 """Family Blogger application factory."""
-import os
+import secrets
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import (
+    Flask,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
-from werkzeug.middleware.proxy_fix import ProxyFix
+from sqlalchemy import event
 from werkzeug.wrappers import Response
 
-from config import DEFAULT_INSTANCE_DIR, Config, load_or_create_secret_key
+from config import (
+    DEFAULT_INSTANCE_DIR,
+    Config,
+    cookie_secure_from_env,
+    load_or_create_secret_key,
+    trust_any_proxy_from_env,
+    trusted_proxies_from_env,
+)
 
 from .constants import (
     DEFAULT_AVATARS,
     MOODS,
     REACTIONS,
+    THEME_COLOUR_LABELS,
     THEME_PRESETS,
     VISIBILITIES,
 )
+from .migrations import migrate_database
 from .models import User, db, resolve_theme
 from .utils import is_safe_url, redirect_back
 from .utils.markdown import render_markdown
+from .utils.proxy import TrustedProxyMiddleware
 
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
@@ -37,17 +55,84 @@ ONBOARDING_EXEMPT = {
 }
 
 
-@login_manager.user_loader
-def load_user(user_id: str) -> "User | None":
-    """Load a user for Flask-Login from the id stored in the session.
+# Sent with every response. The Content-Security-Policy only allows
+# this site's own files: no inline scripts, no inline style attributes
+# and no outside servers. The one inline <style> (the user's theme
+# colours in base.html) carries a per-request nonce, which is added to
+# style-src in ``_csp_header``.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+    "X-Frame-Options": "DENY",
+}
+CSP_DIRECTIVES = [
+    "default-src 'self'",
+    "img-src 'self' data: blob:",
+    "style-src 'self'",
+    "script-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+]
 
-    Args:
-        user_id: The user's primary key, as a string.
+
+def csp_nonce() -> str:
+    """Return this request's CSP nonce, making it on first use.
 
     Returns:
-        The matching user, or ``None`` if there is no such user.
+        A random URL-safe string, the same for the whole request.
     """
-    return db.session.get(User, int(user_id))
+    nonce = g.get("csp_nonce")
+    if nonce is None:
+        nonce = g.csp_nonce = secrets.token_urlsafe(16)
+    return nonce
+
+
+def _csp_header() -> str:
+    """Build the Content-Security-Policy value for this response.
+
+    The nonce is only added when a template used it.
+
+    Returns:
+        The policy, directives separated by ``"; "``.
+    """
+    nonce = g.get("csp_nonce")
+    directives = [
+        f"{d} 'nonce-{nonce}'" if nonce and d == "style-src 'self'" else d
+        for d in CSP_DIRECTIVES
+    ]
+    return "; ".join(directives)
+
+
+@login_manager.user_loader
+def load_user(user_id: str) -> "User | None":
+    """Load a user for Flask-Login from a session or remember cookie.
+
+    The stored value is ``"<id>:<session_token>"`` (see
+    ``User.get_id``). It only matches while the token is unchanged, so
+    a password reset or a deleted account signs that cookie out.
+    Malformed values and the old plain-id format are rejected.
+
+    Args:
+        user_id: The login id from the cookie.
+
+    Returns:
+        The matching user, or ``None`` if the value is malformed, the
+        user is gone or the token does not match.
+    """
+    raw_id, sep, token = (user_id or "").partition(":")
+    valid_id = raw_id.isascii() and raw_id.isdigit() and len(raw_id) < 19
+    if not sep or not token or not valid_id:
+        return None
+    user = db.session.get(User, int(raw_id))
+    if user is None or not user.session_token:
+        return None
+    if not secrets.compare_digest(
+            user.session_token.encode(), token.encode()):
+        return None
+    return user
 
 
 def create_app(overrides: dict | None = None) -> Flask:
@@ -75,18 +160,28 @@ def create_app(overrides: dict | None = None) -> Flask:
         SQLALCHEMY_DATABASE_URI=(
             f"sqlite:///{instance_dir / 'family_blogger.db'}"),
         UPLOAD_FOLDER=str(instance_dir / "uploads"),
+        SESSION_COOKIE_SECURE=cookie_secure_from_env(),
+        REMEMBER_COOKIE_SECURE=cookie_secure_from_env(),
+        TRUSTED_PROXIES=trusted_proxies_from_env(),
+        TRUST_ANY_PROXY=trust_any_proxy_from_env(),
     )
     app.config.update(overrides)
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
 
     # Behind a reverse proxy (e.g. Nginx Proxy Manager doing HTTPS),
-    # trust one hop of X-Forwarded-* headers so redirects and links
-    # keep the right scheme.
-    if os.environ.get("FB_TRUST_PROXY") == "1":
-        app.wsgi_app = ProxyFix(
-            app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    # believe one hop of X-Forwarded-* headers, but only from the
+    # proxies in FB_TRUSTED_PROXIES, so redirects keep the right
+    # scheme and log-in throttling sees each device's own address.
+    # TRUST_ANY_PROXY is the legacy FB_TRUST_PROXY=1, which believes
+    # any direct peer; kept only so older setups keep working.
+    if app.config["TRUSTED_PROXIES"] or app.config["TRUST_ANY_PROXY"]:
+        app.wsgi_app = TrustedProxyMiddleware(
+            app.wsgi_app, app.config["TRUSTED_PROXIES"],
+            trust_any=app.config["TRUST_ANY_PROXY"])
 
     db.init_app(app)
+    with app.app_context():
+        event.listen(db.engine, "connect", _set_sqlite_pragmas)
     login_manager.init_app(app)
     csrf.init_app(app)
 
@@ -96,9 +191,49 @@ def create_app(overrides: dict | None = None) -> Flask:
     _register_error_handlers(app)
 
     with app.app_context():
-        db.create_all()
+        migrate_database(app)
 
     return app
+
+
+def _set_sqlite_pragmas(dbapi_conn: object, _record: object) -> None:
+    """Configure each new SQLite connection.
+
+    * ``foreign_keys=ON`` makes SQLite enforce the foreign keys.
+    * ``journal_mode=WAL`` lets readers carry on while someone writes.
+      The database then also uses ``-wal`` and ``-shm`` files next to
+      it; restore a backup only while the app is stopped, and delete
+      any old ``-wal``/``-shm`` files first.
+    * ``busy_timeout=5000`` waits up to five seconds for a lock
+      instead of failing at once with "database is locked".
+
+    Args:
+        dbapi_conn: The new DB-API (``sqlite3``) connection.
+        _record: SQLAlchemy's connection record (unused).
+    """
+    # SQLite's own lower()/ILIKE only fold ASCII, so search uses this
+    # Unicode-aware function instead (see search_query).
+    dbapi_conn.create_function(
+        "fb_fold", 1, _fold_text, deterministic=True)
+    cursor = dbapi_conn.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+    finally:
+        cursor.close()
+
+
+def _fold_text(value: str | None) -> str | None:
+    """Case-fold text for case-insensitive matching in SQLite.
+
+    Args:
+        value: The column value, or ``None``.
+
+    Returns:
+        The case-folded text, or ``None`` for ``None``.
+    """
+    return None if value is None else value.casefold()
 
 
 def _register_blueprints(app: Flask) -> None:
@@ -146,6 +281,24 @@ def _register_hooks(app: Flask) -> None:
             return redirect(url_for("onboarding.welcome"))
         return None
 
+    @app.after_request
+    def add_security_headers(response: Response) -> Response:
+        """Add the security headers to every response.
+
+        Headers a view already set are left alone.
+
+        Args:
+            response: The outgoing response.
+
+        Returns:
+            The same response, with the headers added.
+        """
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        response.headers.setdefault(
+            "Content-Security-Policy", _csp_header())
+        return response
+
 
 def _register_template_helpers(app: Flask) -> None:
     """Register the Jinja filters and the template context processor.
@@ -191,7 +344,10 @@ def _register_template_helpers(app: Flask) -> None:
 
     @app.context_processor
     def inject_globals() -> dict:
-        """Add the theme and the shared lookup tables to every template.
+        """Add the theme, the shared lookup tables and ``csp_nonce``.
+
+        ``csp_nonce`` is a function: ``{{ csp_nonce() }}`` returns
+        the nonce for an inline ``<style>`` element.
 
         Returns:
             The extra template context.
@@ -202,7 +358,10 @@ def _register_template_helpers(app: Flask) -> None:
             theme = resolve_theme()
         return {
             "theme": theme,
+            "csp_nonce": csp_nonce,
             "THEME_PRESETS": THEME_PRESETS,
+            "THEME_COLOUR_LABELS": THEME_COLOUR_LABELS,
+            "MAX_PHOTOS_PER_POST": app.config["MAX_PHOTOS_PER_POST"],
             "MOODS": MOODS,
             "REACTIONS": REACTIONS,
             "VISIBILITIES": VISIBILITIES,
@@ -238,6 +397,9 @@ def _register_error_handlers(app: Flask) -> None:
         Returns:
             The rendered page and the status code.
         """
+        # A failed transaction leaves the session unusable; the error
+        # page (current_user, flashes) needs a clean one.
+        db.session.rollback()
         title, message = messages[code]
         page = render_template(
             "errors/error.html", code=code, title=title, message=message)
@@ -257,9 +419,11 @@ def _register_error_handlers(app: Flask) -> None:
         Returns:
             A redirect back to the referring page, or the feed.
         """
+        each = app.config["MAX_IMAGE_BYTES"] // (1024 * 1024)
+        total = app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
         flash(
-            "That upload is too big. Photos must be under 10 MB each "
-            "(40 MB total).", "error")
+            f"That upload is too big. Photos must be under {each} MB "
+            f"each ({total} MB total).", "error")
         # Don't touch request.form here: reading the oversized body
         # re-raises 413.
         if is_safe_url(request.referrer):
