@@ -1,7 +1,7 @@
 # Base image pinned by digest for reproducible builds (python:3.12-slim).
 # Dependabot/Renovate or a manual `docker buildx imagetools inspect
 # python:3.12-slim` can refresh it.
-FROM python:3.12-slim@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 # tzdata so TZ (set in compose.yaml) gives correct local diary dates
 RUN apt-get update \
